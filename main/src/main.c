@@ -1,23 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> //Requires by memset
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_spi_flash.h"
-#include <esp_http_server.h>
+
+#include "esp_log.h"
 #include "nvs_flash.h"
-#include "esp_spiffs.h"
 #include "driver/gpio.h"
-#include <sys/stat.h>
-#include "esp_vfs.h"
 
 #include "connect_wifi.h"
 
 #include "PostOffice.h"
 #include "server.h"
-
-#define LED_PIN 2
 
 static const char *TAG = "espressif"; // TAG for debug
 
