@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PSI3541 - Sistemas Embarcados Distribuídos (2025)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="https://www.espressif.com/sites/all/themes/espressif/favicon.ico" type="image/vnd.microsoft.icon">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+        integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+</head>
+
+<body>
+    <header>
+        <h1>PSI3541 - Sistemas Embarcados Distribuídos (2025)</h1>
+        <h3>Aluno: Pedro Alves Munhoz - 11257053</h3>
+    </header>
+    <div class="content">
+        <div class="card-grid">
+            <!-- LED Control Card -->
+            <div class="card">
+                <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i> <strong>GPIO2</strong></p>
+                <p>GPIO state: <strong id="gpio-state">UNKNOWN</strong></p>
+                <p>
+                    <button class="button" onclick="ledSet(1)">ON</button>
+                    <button class="button button2" onclick="ledSet(0)">OFF</button>
+                </p>
+            </div>
+
+            <!-- Temperature and Humidity Card -->
+            <div class="card">
+                <p><i class="fas fa-thermometer-half fa-2x" style="color:#ff5733;"></i> <strong>Temperature & Humidity</strong></p>
+                <p>Temperature: <strong id="temperature">-- ºC</strong></p>
+                <p>Humidity: <strong id="humidity">-- %</strong></p>
+                <p>
+                    <button class="button" onclick="updateDHT11()">Refresh</button>
+                </p>
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+
+</html>
