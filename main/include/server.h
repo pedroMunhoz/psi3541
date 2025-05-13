@@ -13,7 +13,12 @@
 #include <esp_http_server.h>
 #include <cJSON.h>
 
+#include "project.h"
 #include "PostOffice.h"
+
+#define KEY_INT     'i'
+#define KEY_FLOAT   'f'
+#define KEY_STRING  's'
 
 // Function prototypes
 httpd_handle_t setup_server(void);

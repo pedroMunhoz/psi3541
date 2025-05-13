@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> //Requires by memset
+#include <string.h>
 
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
+#include "dht.h"
 
 #include "project.h"
 #include "connect_wifi.h"
@@ -12,6 +13,29 @@
 #include "server.h"
 
 static const char *TAG = "espressif"; // TAG for debug
+
+dht_sensor_type_t sensor_type = DHT_TYPE_DHT11;
+
+float lastTemperature = 25.0;
+float lastHumidity = 70.0;
+
+dht_data_t dht_read() {
+    dht_data_t data;
+    // esp_err_t result = dht_read_float_data(sensor_type, DHT_PIN, &data.humidity, &data.temperature);
+    // if (result != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to read DHT data: %s", esp_err_to_name(result));
+    //     data.temperature = 0;
+    //     data.humidity = 0;
+    // }
+
+    // Mock data
+    data.temperature = lastTemperature + (rand() % 100) / 100.0 - 0.5; // Random value close to 25ºC
+    data.humidity = lastHumidity + (rand() % 100) / 100.0 - 0.5;    // Random value close to 70%
+    lastTemperature = data.temperature;
+    lastHumidity = data.humidity;
+
+    return data;
+}
 
 static void handle_led(post_office_message_t *message) {
     if (message->data != NULL) {
@@ -25,6 +49,13 @@ static void handle_led(post_office_message_t *message) {
     setResponse(message, &led_state);
 }
 
+static void handle_dht(post_office_message_t *message) {
+    dht_data_t data = dht_read();
+    ESP_LOGI("DHT", "Temperature: %.2f, Humidity: %.2f", data.temperature, data.humidity);
+    
+    setResponse(message, &data);
+}
+
 void app_main()
 {
     // Initialize NVS
@@ -35,18 +66,21 @@ void app_main()
     }
     ESP_ERROR_CHECK(ret);
 
+    // Initialize GPIO
+    gpio_reset_pin(LED_PIN);
+    gpio_set_direction(LED_PIN, GPIO_MODE_INPUT_OUTPUT);
+    gpio_pullup_en(DHT_PIN);
+
     // Initialize PostOffice
     post_office_init();
 
     // Register message handlers
     post_office_register_handler(MESSAGE_LED, handle_led);
+    post_office_register_handler(MESSAGE_DHT, handle_dht);
 
     connect_wifi();
 
     if (wifi_connect_status) {
-        gpio_reset_pin(LED_PIN);
-        gpio_set_direction(LED_PIN, GPIO_MODE_INPUT_OUTPUT);
-
         ESP_LOGI(TAG, "SPIFFS Web Server is running ... ...\n");
         setup_server();
     }

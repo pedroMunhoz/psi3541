@@ -57,12 +57,30 @@ h1, h3 {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
+/* General card styling */
 .card {
-    background-color: white;
-    box-shadow: 2px 2px 12px 1px rgba(140, 140, 140, 0.5);
-    padding: 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
     border-radius: 8px;
+    padding: 16px;
+    margin: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex: 1; /* Allow cards to grow equally */
     text-align: center;
+}
+
+/* Row styling */
+.row {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    justify-content: space-between; /* Add space between cards */
+    margin-bottom: 16px;
+}
+
+/* Ensure cards are responsive */
+.card canvas {
+    max-width: 100%;
+    height: auto;
 }
 
 .card p {
@@ -72,4 +90,10 @@ h1, h3 {
 
 .card strong {
     font-size: 1.2rem;
+}
+
+.card.full-width {
+    flex: 1 1 100%; /* Make the card take the full width of the row */
+    max-width: 800px; /* Optional: Limit the maximum width */
+    margin: 0 auto; /* Center the card horizontally */
 }
