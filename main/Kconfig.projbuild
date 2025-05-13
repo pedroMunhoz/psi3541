@@ -17,4 +17,17 @@ menu "PSI3541 Configurations"
         default 5
         help
             Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+
+    config BROKER_URI
+        string "MQTT Broker URI"
+        default "xxxxxxxxxxxxxx-xxx.iot.xx-xxxx-x.amazonaws.com"
+        help
+            The hostname or IP address of the MQTT broker.
+
+    config BROKER_PORT
+        int "MQTT Broker Port"
+        default 8883
+        help
+            The port number of the MQTT broker.
+
 endmenu
