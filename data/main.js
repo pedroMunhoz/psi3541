@@ -157,6 +157,44 @@ function toggleBlink() {
     .catch(error => console.error('Error toggling blink state:', error));
 }
 
+function activateBlink() {
+    fetch('/blink', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: null // Empty body to activate blink
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.state === 1) { // Blink activated
+            document.getElementById('led-menu').style.display = 'none';
+            document.getElementById('blink-menu').style.display = 'block';
+            document.getElementById('gpio-state').textContent = 'BLINKING';
+        }
+    })
+    .catch(error => console.error('Error activating blink:', error));
+}
+
+function deactivateBlink() {
+    fetch('/blink', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: null // Empty body to deactivate blink
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.state === 0) { // Blink deactivated
+            document.getElementById('blink-menu').style.display = 'none';
+            document.getElementById('led-menu').style.display = 'block';
+            document.getElementById('gpio-state').textContent = 'OFF';
+        }
+    })
+    .catch(error => console.error('Error deactivating blink:', error));
+}
+
 window.addEventListener('load', () => {
     updateLEDState();
     initializeChart();

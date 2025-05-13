@@ -21,22 +21,32 @@
         <!-- First Row: LED and DHT Cards -->
         <div class="row">
             <!-- LED Control Card -->
-            <div class="card">
-                <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i> <strong>GPIO2</strong></p>
-                <p>GPIO state: <strong id="gpio-state">UNKNOWN</strong></p>
-                <p>
-                    <button class="button" onclick="ledSet(1)">ON</button>
-                    <button class="button button2" onclick="ledSet(0)">OFF</button>
-                </p>
-                <hr>
-                <p><strong>Blink Control</strong></p>
-                <p>
-                    Frequency (Hz): <input type="number" id="blink-frequency" min="1" max="10" value="1" style="width: 60px;">
-                    <button class="button" onclick="setBlinkFrequency()">Save Frequency</button>
-                </p>
-                <p>
-                    <button class="button" id="blink-toggle" onclick="toggleBlink()">Start Blink</button>
-                </p>
+            <div class="card" id="led-card">
+                <!-- LED Control Menu -->
+                <div id="led-menu">
+                    <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i> <strong>GPIO2</strong></p>
+                    <p>GPIO state: <strong id="gpio-state">UNKNOWN</strong></p>
+                    <p>
+                        <button class="button" onclick="ledSet(1)">ON</button>
+                        <button class="button button2" onclick="ledSet(0)">OFF</button>
+                    </p>
+                    <p>
+                        <button class="button button-green" onclick="activateBlink()">Activate Blink</button>
+                    </p>
+                </div>
+
+                <!-- BLINK Control Menu -->
+                <div id="blink-menu" style="display: none;">
+                    <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i> <strong>GPIO2</strong></p>
+                    <p>GPIO state: <strong id="gpio-state">BLINKING</strong></p>
+                    <p>
+                        Frequency (Hz): <input type="number" id="blink-frequency" min="1" max="10" value="1" style="width: 60px;">
+                        <button class="button" onclick="setBlinkFrequency()">Save Frequency</button>
+                    </p>
+                    <p>
+                        <button class="button button-red" onclick="deactivateBlink()">Deactivate Blink</button>
+                    </p>
+                </div>
             </div>
 
             <!-- Temperature and Humidity Card -->

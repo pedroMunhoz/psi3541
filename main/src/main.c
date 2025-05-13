@@ -78,6 +78,7 @@ static void handle_blink(post_office_message_t *message) {
             vTaskDelete(xTaskGetHandle("blink_task"));
             ESP_LOGI("BLINK", "Blink task stopped");
             blink_state = 0;
+            gpio_set_level(LED_PIN, 0);
         } else {
             xTaskCreate(blink_task, "blink_task", 2048, NULL, 5, NULL);
             ESP_LOGI("BLINK", "Blink task started");
