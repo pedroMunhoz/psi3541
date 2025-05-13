@@ -29,10 +29,6 @@ function updateLEDState() {
     .catch(error => console.error('Error fetching LED state:', error));
 }
 
-
-
-
-
 const temperatureData = [];
 const humidityData = [];
 const maxDataPoints = 100; // Maximum number of data points to display
@@ -113,6 +109,52 @@ function updateDHT11() {
         chart.update();
     })
     .catch(error => console.error('Error fetching DHT11 data:', error));
+}
+
+function setBlinkFrequency() {
+    const frequency = document.getElementById('blink-frequency').value;
+
+    fetch('/blink', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ frequency: parseInt(frequency, 10) }) // Send frequency in the request body
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(`Blink frequency set to: ${frequency} Hz`);
+    })
+    .catch(error => console.error('Error setting blink frequency:', error));
+}
+
+function toggleBlink() {
+    fetch('/blink', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: null // Empty body for toggle requests
+    })
+    .then(response => response.json())
+    .then(data => {
+        const state = data.state; // 1 for ON, 0 for OFF
+        const button = document.getElementById('blink-toggle');
+        const gpioState = document.getElementById('gpio-state');
+
+        if (state === 1) {
+            button.textContent = 'Turn Off Blink';
+            button.classList.remove('button-green');
+            button.classList.add('button-red');
+            gpioState.textContent = `BLINKING`;
+        } else {
+            button.textContent = 'Start Blink';
+            button.classList.remove('button-red');
+            button.classList.add('button-green');
+            gpioState.textContent = 'OFF';
+        }
+    })
+    .catch(error => console.error('Error toggling blink state:', error));
 }
 
 window.addEventListener('load', () => {

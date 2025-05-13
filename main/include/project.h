@@ -12,6 +12,7 @@ typedef struct {
 typedef enum {
     MESSAGE_LED,
     MESSAGE_DHT,
+    MESSAGE_BLINK,
     MESSAGE_UNKNOWN
 } post_office_message_type_t;
 

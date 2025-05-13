@@ -97,3 +97,13 @@ h1, h3 {
     max-width: 800px; /* Optional: Limit the maximum width */
     margin: 0 auto; /* Center the card horizontally */
 }
+
+.button-green {
+    background-color: #28a745; /* Green for enabling */
+    color: white;
+}
+
+.button-red {
+    background-color: #dc3545; /* Red for stopping */
+    color: white;
+}

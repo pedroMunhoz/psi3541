@@ -28,6 +28,15 @@
                     <button class="button" onclick="ledSet(1)">ON</button>
                     <button class="button button2" onclick="ledSet(0)">OFF</button>
                 </p>
+                <hr>
+                <p><strong>Blink Control</strong></p>
+                <p>
+                    Frequency (Hz): <input type="number" id="blink-frequency" min="1" max="10" value="1" style="width: 60px;">
+                    <button class="button" onclick="setBlinkFrequency()">Save Frequency</button>
+                </p>
+                <p>
+                    <button class="button" id="blink-toggle" onclick="toggleBlink()">Start Blink</button>
+                </p>
             </div>
 
             <!-- Temperature and Humidity Card -->

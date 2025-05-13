@@ -32,6 +32,12 @@ httpd_uri_t uri_list[] = {
         .method = HTTP_POST,
         .handler = dht11_handler,
         .user_ctx = NULL
+    },
+    {
+        .uri = "/blink",
+        .method = HTTP_POST,
+        .handler = blink_handler,
+        .user_ctx = NULL
     }
 };
 
@@ -181,22 +187,17 @@ esp_err_t led_handler(httpd_req_t *req) {
     char buffer[32];
     int received = -1;
 
-    // Log the request URI
     ESP_LOGI(TAG, "Received request for URI: %s", req->uri);
 
-    // Check if the request has a body
     int content_len = req->content_len;
     if (content_len > 0) {
-        // Read the request body
         int ret = httpd_req_recv(req, buffer, sizeof(buffer) - 1); // Leave space for null-terminator
         if (ret <= 0) {
             ESP_LOGE(TAG, "Failed to read request body");
             return httpd_resp_send_500(req);
         }
+        buffer[ret] = '\0'; 
 
-        buffer[ret] = '\0'; // Null-terminate the buffer
-
-        // Log the request body
         ESP_LOGI(TAG, "Request body: %s", buffer);
 
         cJSON *json = cJSON_Parse(buffer);
@@ -215,9 +216,6 @@ esp_err_t led_handler(httpd_req_t *req) {
         received = state->valueint;
         cJSON_Delete(json);
 
-    } else {
-        // Log that no body was provided
-        ESP_LOGI(TAG, "No request body provided");
     }
 
     post_office_message_t message = {
@@ -231,15 +229,15 @@ esp_err_t led_handler(httpd_req_t *req) {
     int led_state;
     if (xQueueReceive(message.response_queue, &led_state, portMAX_DELAY)) {
         ESP_LOGI(TAG, "Received LED state: %d", led_state);
-        vQueueDelete(message.response_queue); // Clean up the response queue
+        vQueueDelete(message.response_queue);
 
         char *json_response = create_json_response("state", KEY_INT, led_state, NULL);
         send_json_response(req, json_response);
-        free(json_response); // Free the JSON response string
+        free(json_response);
         return ESP_OK;
     } else {
         ESP_LOGE(TAG, "Failed to receive LED state");
-        vQueueDelete(message.response_queue); // Clean up the response queue
+        vQueueDelete(message.response_queue);
         return httpd_resp_send_500(req);
     }
 }
@@ -266,6 +264,52 @@ esp_err_t dht11_handler(httpd_req_t *req) {
     } else {
         ESP_LOGE(TAG, "Failed to receive DHT data");
         vQueueDelete(message.response_queue); // Clean up the response queue
+        return httpd_resp_send_500(req);
+    }
+}
+
+esp_err_t blink_handler(httpd_req_t *req) {
+    char buffer[32];
+    int received = -1;
+
+    int content_len = req->content_len;
+    if (content_len > 0) {
+        int ret = httpd_req_recv(req, buffer, sizeof(buffer) - 1);
+        if (ret <= 0) {
+            return httpd_resp_send_500(req);
+        }
+        buffer[ret] = '\0'; 
+
+        cJSON *json = cJSON_Parse(buffer);
+        if (json == NULL) {
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to parse JSON");
+        }
+        cJSON *frequency = cJSON_GetObjectItem(json, "frequency");
+        if (!cJSON_IsNumber(frequency)) {
+            cJSON_Delete(json);
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid frequency value");
+        }
+        received = frequency->valueint;
+        cJSON_Delete(json);
+
+    }
+
+    post_office_message_t message = {
+        .type = MESSAGE_BLINK,
+        .data = (received != -1) ? (int*)&received : NULL,
+        .response_queue = xQueueCreate(1, sizeof(int))
+    };
+    post_office_send_message(&message);
+
+    int state;
+    if (xQueueReceive(message.response_queue, &state, portMAX_DELAY)) {
+        vQueueDelete(message.response_queue);
+        char *json_response = create_json_response("state", KEY_INT, state, NULL);
+        send_json_response(req, json_response);
+        free(json_response);
+        return ESP_OK;
+    } else {
+        vQueueDelete(message.response_queue);
         return httpd_resp_send_500(req);
     }
 }

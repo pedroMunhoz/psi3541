@@ -19,6 +19,16 @@ dht_sensor_type_t sensor_type = DHT_TYPE_DHT11;
 float lastTemperature = 25.0;
 float lastHumidity = 70.0;
 
+int blink_freq = 1;
+void blink_task(void *pvParameter) {
+    while (1) {
+        int current_level = gpio_get_level(LED_PIN);
+        gpio_set_level(LED_PIN, !current_level);
+        vTaskDelay(pdMS_TO_TICKS(1000 / blink_freq));
+    }
+}
+
+
 dht_data_t dht_read() {
     dht_data_t data;
     // esp_err_t result = dht_read_float_data(sensor_type, DHT_PIN, &data.humidity, &data.temperature);
@@ -56,6 +66,27 @@ static void handle_dht(post_office_message_t *message) {
     setResponse(message, &data);
 }
 
+static void handle_blink(post_office_message_t *message) {
+    static int blink_state = 0;
+
+    if (message->data != NULL) {
+        int *frequency = (int *)message->data;
+        blink_freq = *frequency;
+        ESP_LOGI("BLINK", "Blink frequency set to: %d", blink_freq);
+    } else {
+        if (xTaskGetHandle("blink_task") != NULL) {
+            vTaskDelete(xTaskGetHandle("blink_task"));
+            ESP_LOGI("BLINK", "Blink task stopped");
+            blink_state = 0;
+        } else {
+            xTaskCreate(blink_task, "blink_task", 2048, NULL, 5, NULL);
+            ESP_LOGI("BLINK", "Blink task started");
+            blink_state = 1;
+        }
+    }
+    setResponse(message, &blink_state);
+}
+
 void app_main()
 {
     // Initialize NVS
@@ -77,6 +108,7 @@ void app_main()
     // Register message handlers
     post_office_register_handler(MESSAGE_LED, handle_led);
     post_office_register_handler(MESSAGE_DHT, handle_dht);
+    post_office_register_handler(MESSAGE_BLINK, handle_blink);
 
     connect_wifi();
 

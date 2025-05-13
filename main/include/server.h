@@ -25,6 +25,7 @@ httpd_handle_t setup_server(void);
 esp_err_t static_file_handler(httpd_req_t *req);
 esp_err_t led_handler(httpd_req_t *req);
 esp_err_t dht11_handler(httpd_req_t *req);
+esp_err_t blink_handler(httpd_req_t *req);
 
 // Declare the list of URI handlers
 extern httpd_uri_t uri_list[];
