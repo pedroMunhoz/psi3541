@@ -84,11 +84,52 @@ httpd_handle_t setup_server(void) {
     return server;
 }
 
-static esp_err_t send_json_response(httpd_req_t *req, const char *key, int value) {
-    char response[64];
-    snprintf(response, sizeof(response), "{\"%s\": %d}", key, value);
+char *create_json_response(const char *key, ...) {
+    cJSON *json = cJSON_CreateObject();
+    if (!json) {
+        return NULL; // Return NULL if JSON object creation fails
+    }
+
+    va_list args;
+    va_start(args, key);
+
+    const char *current_key = key;
+    while (current_key != NULL) {
+        // Get the type specifier
+        char type = (char)va_arg(args, int); // Type specifier ('i' for int, 'f' for float, 's' for string)
+
+        if (type == 'i') {
+            int value = va_arg(args, int);
+            cJSON_AddNumberToObject(json, current_key, value);
+        } else if (type == 'f') {
+            double value = va_arg(args, double);
+            cJSON_AddNumberToObject(json, current_key, value);
+        } else if (type == 's') {
+            const char *value = va_arg(args, const char *);
+            cJSON_AddStringToObject(json, current_key, value);
+        } else {
+            // Invalid type specifier
+            cJSON_Delete(json);
+            va_end(args);
+            return NULL;
+        }
+
+        // Move to the next key
+        current_key = va_arg(args, const char *);
+    }
+
+    va_end(args);
+
+    // Convert the JSON object to a string
+    char *response = cJSON_PrintUnformatted(json);
+    cJSON_Delete(json); // Free the JSON object
+
+    return response; // Caller must free the returned string
+}
+
+static esp_err_t send_json_response(httpd_req_t *req, const char *json_response) {
     httpd_resp_set_type(req, "application/json");
-    return httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    return httpd_resp_send(req, json_response, HTTPD_RESP_USE_STRLEN);
 }
 
 esp_err_t static_file_handler(httpd_req_t *req) {
@@ -191,7 +232,11 @@ esp_err_t led_handler(httpd_req_t *req) {
     if (xQueueReceive(message.response_queue, &led_state, portMAX_DELAY)) {
         ESP_LOGI(TAG, "Received LED state: %d", led_state);
         vQueueDelete(message.response_queue); // Clean up the response queue
-        return send_json_response(req, "state", led_state);
+
+        char *json_response = create_json_response("state", KEY_INT, led_state, NULL);
+        send_json_response(req, json_response);
+        free(json_response); // Free the JSON response string
+        return ESP_OK;
     } else {
         ESP_LOGE(TAG, "Failed to receive LED state");
         vQueueDelete(message.response_queue); // Clean up the response queue
@@ -200,12 +245,27 @@ esp_err_t led_handler(httpd_req_t *req) {
 }
 
 esp_err_t dht11_handler(httpd_req_t *req) {
-    // Create a JSON response with dummy temperature and humidity values
-    const char *response = "{\"temperature\": 25, \"humidity\": 60}";
+    post_office_message_t message = {
+        .type = MESSAGE_DHT,
+        .data = NULL,
+        .response_queue = xQueueCreate(1, sizeof(dht_data_t))
+    };
 
-    // Set the response type to JSON
-    httpd_resp_set_type(req, "application/json");
+    post_office_send_message(&message);
 
-    // Send the response
-    return httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    dht_data_t dht_data;
+
+    if (xQueueReceive(message.response_queue, &dht_data, portMAX_DELAY)) {
+        ESP_LOGI(TAG, "Received DHT data: Temperature: %.2f, Humidity: %.2f", dht_data.temperature, dht_data.humidity);
+        vQueueDelete(message.response_queue); // Clean up the response queue
+        
+        char *json_response = create_json_response("temperature", KEY_FLOAT, dht_data.temperature, "humidity", KEY_FLOAT, dht_data.humidity, NULL);
+        send_json_response(req, json_response);
+        free(json_response); // Free the JSON response string
+        return ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "Failed to receive DHT data");
+        vQueueDelete(message.response_queue); // Clean up the response queue
+        return httpd_resp_send_500(req);
+    }
 }
