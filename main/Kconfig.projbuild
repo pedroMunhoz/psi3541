@@ -1,4 +1,4 @@
-menu "Configuration"
+menu "PSI3541 Configurations"
 
     config ESP_WIFI_SSID
         string "WiFi SSID"

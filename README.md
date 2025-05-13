@@ -1,32 +1,48 @@
-# _Sample project_
+# Projeto PSI3541 - Sistemas Embarcados Distribuídos
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+Este repositório contém o projeto desenvolvido para a disciplina **PSI3541 - Sistemas Embarcados Distribuídos**. O objetivo é implementar funcionalidades específicas em sistemas embarcados, com versionamento do código e avanço conforme as atividades e o projeto proposto.
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+## Estrutura do Projeto
 
+Os arquivos do projeto estão organizados da seguinte forma:
 
+- **`include/`**: Contém os arquivos de cabeçalho (`.h`) com as definições e declarações utilizadas no projeto.
+- **`src/`**: Contém os arquivos de código-fonte (`.c`) com a implementação das funcionalidades.
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+## Funcionalidades
 
-## Example folder contents
+O projeto implementa as seguintes funcionalidades:
 
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+1. **Controle e leitura de GPIO**: Manipulação de pinos de entrada e saída do microcontrolador.
+2. **Leitura do sensor DHT11**: Coleta de dados de temperatura e umidade.
+3. **Servidor Web com API REST**: Permite a interação com o sistema embarcado via HTTP.
+4. **Sistema de Arquivos**: Armazena os arquivos necessários para o funcionamento da interface web.
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
+## Compilação
 
-Below is short explanation of remaining files in the project folder.
+Para compilar o projeto, siga os passos abaixo:
 
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+1. Clone o repositório:
+   ```bash
+   git clone https://github.com/seu-usuario/psi3541.git
+   cd psi3541
+2. Configure o ambiente ESP-IDF:
+    ```bash
+    . $IDF_PATH/export.sh
+3. Configure o projeto:
+    ```bash
+    idf.py menuconfig
+    ```
+    - Configure o WiFi (SSID e senha) em "PSI3541 Configurations"
+4. Compile o projeto, faça o upload do sistema de arquivos e do firmware
+    ```bash
+    idf.py build
+    idf.py spiffs_flash
+    idf.py flash
+5. Monitore sua saída
+    ```bash
+    idf.py monitor
+
+## Acessando a interface web
+
+Após o ESP32 conectar-se à rede Wi-Fi, o endereço IP será exibido no monitor serial. Acesse o endereço IP no navegador para visualizar a interface web.
