@@ -29,6 +29,60 @@ function updateLEDState() {
     .catch(error => console.error('Error fetching LED state:', error));
 }
 
+
+
+
+
+const temperatureData = [];
+const humidityData = [];
+const maxDataPoints = 100; // Maximum number of data points to display
+
+let chart; // Chart.js instance
+
+function initializeChart() {
+    const ctx = document.getElementById('dht-chart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], // Time labels
+            datasets: [
+                {
+                    label: 'Temperature (C)',
+                    data: temperatureData,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: true,
+                },
+                {
+                    label: 'Humidity (%)',
+                    data: humidityData,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    fill: true,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time',
+                    },
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value',
+                    },
+                    beginAtZero: true,
+                },
+            },
+        },
+    });
+}
+
 function updateDHT11() {
     fetch('/dht11', {
         method: 'POST',
@@ -38,13 +92,31 @@ function updateDHT11() {
     })
     .then(response => response.json())
     .then(data => {
-        document.getElementById('temperature').innerText = `${data.temperature} °C`;
-        document.getElementById('humidity').innerText = `${data.humidity} %`;
+        const temperature = data.temperature.toFixed(1);
+        const humidity = data.humidity.toFixed(1);
+
+        document.getElementById('temperature').textContent = `${temperature} C`;
+        document.getElementById('humidity').textContent = `${humidity} %`;
+
+        // Add data to the arrays
+        const now = new Date().toLocaleTimeString();
+        if (temperatureData.length >= maxDataPoints) {
+            temperatureData.shift();
+            humidityData.shift();
+            chart.data.labels.shift();
+        }
+        temperatureData.push(temperature);
+        humidityData.push(humidity);
+        chart.data.labels.push(now);
+
+        // Update the chart
+        chart.update();
     })
     .catch(error => console.error('Error fetching DHT11 data:', error));
 }
 
 window.addEventListener('load', () => {
     updateLEDState();
-    updateDHT11(); // Fetch temperature and humidity on page load
+    initializeChart();
+    updateDHT11();
 });
