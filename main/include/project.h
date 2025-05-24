@@ -27,7 +27,7 @@ typedef enum {
     MESSAGE_DHT,
     MESSAGE_BLINK,
     MESSAGE_UNKNOWN
-} post_office_message_type_t;
+} messenger_message_type_t;
 
 extern dht_sensor_type_t sensor_type;
 extern float lastTemperature;

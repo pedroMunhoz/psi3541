@@ -175,13 +175,13 @@ esp_err_t led_handler(httpd_req_t *req) {
 
     }
 
-    post_office_message_t message = {
+    messenger_message_t message = {
         .type = MESSAGE_LED,
         .data = (received != -1) ? (int*)&received : NULL,
         .response_queue = xQueueCreate(1, sizeof(int))
     };
 
-    post_office_send_message(&message);
+    messenger_send_message(&message);
 
     int led_state;
     if (xQueueReceive(message.response_queue, &led_state, portMAX_DELAY)) {
@@ -200,13 +200,13 @@ esp_err_t led_handler(httpd_req_t *req) {
 }
 
 esp_err_t dht11_handler(httpd_req_t *req) {
-    post_office_message_t message = {
+    messenger_message_t message = {
         .type = MESSAGE_DHT,
         .data = NULL,
         .response_queue = xQueueCreate(1, sizeof(dht_data_t))
     };
 
-    post_office_send_message(&message);
+    messenger_send_message(&message);
 
     dht_data_t dht_data;
 
@@ -251,12 +251,12 @@ esp_err_t blink_handler(httpd_req_t *req) {
 
     }
 
-    post_office_message_t message = {
+    messenger_message_t message = {
         .type = MESSAGE_BLINK,
         .data = (received != -1) ? (int*)&received : NULL,
         .response_queue = xQueueCreate(1, sizeof(int))
     };
-    post_office_send_message(&message);
+    messenger_send_message(&message);
 
     int state;
     if (xQueueReceive(message.response_queue, &state, portMAX_DELAY)) {

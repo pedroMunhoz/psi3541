@@ -31,13 +31,13 @@ void handle_led(const char* data, int data_len) {
 
     cJSON_Delete(root);
 
-    post_office_message_t message = {
+    messenger_message_t message = {
         .type = MESSAGE_LED,
         .data = (lvalue != -1) ? (int *)&lvalue : NULL,
         .response_queue = NULL
     };
 
-    post_office_send_message(&message);
+    messenger_send_message(&message);
 }
 
 void handle_blink(const char* data, int data_len) {
@@ -56,13 +56,13 @@ void handle_blink(const char* data, int data_len) {
 
     cJSON_Delete(root);
 
-    post_office_message_t message = {
+    messenger_message_t message = {
         .type = MESSAGE_BLINK,
         .data = (bfreq != -1) ? (int *)&bfreq : NULL,
         .response_queue = NULL
     };
 
-    post_office_send_message(&message);
+    messenger_send_message(&message);
 }
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
