@@ -1,5 +1,5 @@
 function ledSet(state) {
-    fetch('/led', {
+    fetch('/ledSet', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -15,7 +15,7 @@ function ledSet(state) {
 }
 
 function updateLEDState() {
-    fetch('/led', {
+    fetch('/ledGet', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -200,3 +200,7 @@ window.addEventListener('load', () => {
     initializeChart();
     updateDHT11();
 });
+
+
+setInterval(updateDHT11, 2000);
+setInterval(updateLEDState, 500);
