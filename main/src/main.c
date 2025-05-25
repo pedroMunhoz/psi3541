@@ -1,15 +1,24 @@
-#include "nvs_flash.h"
-
 #include "project.h"
+
+#include "nvs_flash.h"
 
 #include "connect_wifi.h"
 #include "Messenger.h"
+#include "filesystem.h"
 #include "server.h"
-#include "mqtt.h"
+// #include "mqtt.h"
 #include "my_led.h"
 #include "my_dht.h"
 
-static const char *TAG = "espressif"; // TAG for debug
+typedef struct {
+    Messenger messenger;
+    myDHT dht;
+    myLED led;
+    Filesystem fs;
+    myServer server;
+} System;
+
+System sys;
 
 void app_main() {
     // Initialize NVS
@@ -21,19 +30,24 @@ void app_main() {
     ESP_ERROR_CHECK(ret);
 
     // Initialize Messenger
-    messenger_init();
+    messenger_init(&sys.messenger);
     
     // Initilize project modules
-    init_dht();
-    init_led();
+    dht_init(&sys.dht, DHT_PIN, DHT_TYPE_DHT11);
+    dht_setMessenger(&sys.dht, &sys.messenger);
+
+    led_init(&sys.led, LED_PIN);
+    led_setMessenger(&sys.led, &sys.messenger);
+
+    filesystem_start(&sys.fs);
 
     connect_wifi();
 
     if (wifi_connect_status) {
-        ESP_LOGI(TAG, "SPIFFS Web Server is running ... ...\n");
-        setup_server();
+        server_init(&sys.server);
+        server_setMessenger(&sys.server, &sys.messenger);
 
-        mqtt_app_start();
-        xTaskCreate(task_publish_dht11, "task_publish_dht11", 4096, 0,5,0);
+        // mqtt_app_start();
+        // xTaskCreate(task_publish_dht11, "task_publish_dht11", 4096, 0,5,0);
     }
 }
