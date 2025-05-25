@@ -2,271 +2,295 @@
 
 static const char *TAG = "server"; // TAG for debug
 
-httpd_uri_t uri_list[] = {
-    {
-        .uri = "/",
-        .method = HTTP_GET,
-        .handler = static_file_handler,
-        .user_ctx = NULL
-    },
-    {
-        .uri = "/style.css",
-        .method = HTTP_GET,
-        .handler = static_file_handler,
-        .user_ctx = NULL
-    },
-    {
-        .uri = "/main.js",
-        .method = HTTP_GET,
-        .handler = static_file_handler,
-        .user_ctx = NULL
-    },
-    {
-        .uri = "/led",
-        .method = HTTP_POST,
-        .handler = led_handler,
-        .user_ctx = NULL
-    },
-    {
-        .uri = "/dht11",
-        .method = HTTP_POST,
-        .handler = dht11_handler,
-        .user_ctx = NULL
-    },
-    {
-        .uri = "/blink",
-        .method = HTTP_POST,
-        .handler = blink_handler,
-        .user_ctx = NULL
+char *create_json(const char *key, ...) {
+    cJSON *json = cJSON_CreateObject();
+    if (!json) {
+        return NULL;
     }
-};
 
-static void start_spiffs(void) {
-    ESP_LOGI(TAG, "Initializing SPIFFS");
+    va_list args;
+    va_start(args, key);
 
-    esp_vfs_spiffs_conf_t conf = {
-        .base_path = "/spiffs",
-        .partition_label = NULL,
-        .max_files = 5,
-        .format_if_mount_failed = true
-    };
+    const char *current_key = key;
+    while (current_key != NULL) {
+        json_key_type_t type = (json_key_type_t)va_arg(args, int);
 
-    esp_err_t ret = esp_vfs_spiffs_register(&conf);
-
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            ESP_LOGE(TAG, "Failed to mount or format filesystem");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+        if (type == JSON_TYPE_INT) {
+            int value = va_arg(args, int);
+            cJSON_AddNumberToObject(json, current_key, value);
+        } else if (type == JSON_TYPE_FLOAT) {
+            double value = va_arg(args, double);
+            cJSON_AddNumberToObject(json, current_key, value);
+        } else if (type == JSON_TYPE_STRING) {
+            const char *value = va_arg(args, const char *);
+            cJSON_AddStringToObject(json, current_key, value);
         } else {
-            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+            cJSON_Delete(json);
+            va_end(args);
+            return NULL;
         }
-        return;
+
+        current_key = va_arg(args, const char *);
     }
 
-    size_t total = 0, used = 0;
-    ret = esp_spiffs_info(NULL, &total, &used);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "SPIFFS Partition Size: Total: %d, Used: %d", total, used);
-    }
+    va_end(args);
+
+    char *response = cJSON_PrintUnformatted(json);
+    cJSON_Delete(json);
+
+    return response;
 }
 
-httpd_handle_t setup_server(void) {
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    httpd_handle_t server = NULL;
-
-    // Start SPIFFS
-    start_spiffs();
-
-    if (httpd_start(&server, &config) == ESP_OK) {
-        // Register all URI handlers from the list
-        for (int i = 0; i < sizeof(uri_list) / sizeof(uri_list[0]); i++) {
-            httpd_register_uri_handler(server, &uri_list[i]);
-        }
-    }
-
-    return server;
-}
-
-static esp_err_t send_json_response(httpd_req_t *req, const char *json_response) {
-    httpd_resp_set_type(req, "application/json");
-    return httpd_resp_send(req, json_response, HTTPD_RESP_USE_STRLEN);
-}
-
-esp_err_t static_file_handler(httpd_req_t *req) {
-    char filepath[128];
-    if (strcmp(req->uri, "/") == 0) {
-        strcpy(filepath, "/spiffs/index.html");
-        httpd_resp_set_type(req, "text/html");
-    } else if (strcmp(req->uri, "/style.css") == 0) {
-        strcpy(filepath, "/spiffs/style.css");
-        httpd_resp_set_type(req, "text/css");
-    } else if (strcmp(req->uri, "/main.js") == 0) {
-        strcpy(filepath, "/spiffs/main.js");
-        httpd_resp_set_type(req, "application/javascript");
-    } else {
-        ESP_LOGE(TAG, "Unsupported URI: %s", req->uri);
-        httpd_resp_send_404(req);
+esp_err_t read_request_body(httpd_req_t *req, char *buffer, size_t max_len) {
+    int ret = httpd_req_recv(req, buffer, max_len - 1);
+    if (ret <= 0) {
+        ESP_LOGE(TAG, "Failed to read request body");
         return ESP_FAIL;
     }
-
-    struct stat file_stat;
-    if (stat(filepath, &file_stat) != 0)
-    {
-        ESP_LOGE(TAG, "File %s not found", filepath);
-        httpd_resp_send_404(req);
-        return ESP_FAIL;
-    }
-
-    FILE *file = fopen(filepath, "r");
-    if (!file)
-    {
-        ESP_LOGE(TAG, "Failed to open file: %s", filepath);
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    char buffer[1024];
-    size_t read_bytes;
-    while ((read_bytes = fread(buffer, 1, sizeof(buffer), file)) > 0)
-    {
-        httpd_resp_send_chunk(req, buffer, read_bytes);
-    }
-    fclose(file);
-
-    httpd_resp_send_chunk(req, NULL, 0); // End response
+    buffer[ret] = '\0';
     return ESP_OK;
 }
 
-esp_err_t led_handler(httpd_req_t *req) {
-    char buffer[32];
-    int received = -1;
+bool extract_data_from_json(const char *json_str, const char *key, json_key_type_t type, void *out_val) {
+    cJSON *json = cJSON_Parse(json_str);
+    if (!json) return false;
 
-    ESP_LOGI(TAG, "Received request for URI: %s", req->uri);
+    cJSON *item = cJSON_GetObjectItem(json, key);
+    bool valid = false;
 
-    int content_len = req->content_len;
-    if (content_len > 0) {
-        int ret = httpd_req_recv(req, buffer, sizeof(buffer) - 1); // Leave space for null-terminator
-        if (ret <= 0) {
-            ESP_LOGE(TAG, "Failed to read request body");
-            return httpd_resp_send_500(req);
-        }
-        buffer[ret] = '\0'; 
+    switch (type) {
+        case JSON_TYPE_INT:
+            if (cJSON_IsNumber(item)) {
+                *(int *)out_val = item->valueint;
+                valid = true;
+            }
+            break;
 
-        ESP_LOGI(TAG, "Request body: %s", buffer);
+        case JSON_TYPE_FLOAT:
+            if (cJSON_IsNumber(item)) {
+                *(float *)out_val = (float)item->valuedouble;
+                valid = true;
+            }
+            break;
 
-        cJSON *json = cJSON_Parse(buffer);
-        if (json == NULL) {
-            ESP_LOGE(TAG, "Failed to parse JSON");
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to parse JSON");
-        }
+        case JSON_TYPE_DOUBLE:
+            if (cJSON_IsNumber(item)) {
+                *(double *)out_val = item->valuedouble;
+                valid = true;
+            }
+            break;
 
-        cJSON *state = cJSON_GetObjectItem(json, "state");
-        if (!cJSON_IsNumber(state)) {
-            ESP_LOGE(TAG, "Invalid state value");
-            cJSON_Delete(json);
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid state value");
-        }
-
-        received = state->valueint;
-        cJSON_Delete(json);
-
+        case JSON_TYPE_STRING:
+            if (cJSON_IsString(item) && item->valuestring) {
+                strncpy((char *)out_val, item->valuestring, MAX_STRING_LEN - 1);
+                ((char *)out_val)[MAX_STRING_LEN - 1] = '\0';
+                valid = true;
+            }
+            break;
     }
 
-    messenger_message_t message = {
-        .type = MESSAGE_LED,
-        .data = (received != -1) ? (int*)&received : NULL,
-        .response_queue = xQueueCreate(1, sizeof(int))
-    };
+    cJSON_Delete(json);
+    return valid;
+}
 
-    messenger_send_message(&message);
+esp_err_t send_json_response(httpd_req_t *req, char *json_str) {
+    if (!json_str) return httpd_resp_send_500(req);
 
-    int led_state;
-    if (xQueueReceive(message.response_queue, &led_state, portMAX_DELAY)) {
-        ESP_LOGI(TAG, "Received LED state: %d", led_state);
-        vQueueDelete(message.response_queue);
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t res = httpd_resp_send(req, json_str, HTTPD_RESP_USE_STRLEN);
+    free(json_str);
+    return res;
+}
 
-        char *json_response = create_json("state", KEY_INT, led_state, NULL);
-        send_json_response(req, json_response);
-        free(json_response);
-        return ESP_OK;
+/*####################################################################*/
+
+static esp_err_t static_file_handler(httpd_req_t *req) {
+    const static_route_t *route = (const static_route_t *)req->user_ctx;
+
+    struct stat file_stat;
+    if (stat(route->filepath, &file_stat) != 0) {
+        ESP_LOGE(TAG, "File %s not found", route->filepath);
+        return httpd_resp_send_404(req);
+    }
+
+    FILE *file = fopen(route->filepath, "r");
+    if (!file) {
+        ESP_LOGE(TAG, "Failed to open file: %s", route->filepath);
+        return httpd_resp_send_500(req);
+    }
+
+    httpd_resp_set_type(req, route->mime);
+
+    char buffer[1024];
+    size_t read_bytes;
+    while ((read_bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        httpd_resp_send_chunk(req, buffer, read_bytes);
+    }
+
+    fclose(file);
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
+/*####################################################################*/
+
+esp_err_t led_handler(httpd_req_t *req) {
+    myServer *server = (myServer *)req->user_ctx;
+    char buffer[MAX_REQ_LEN];
+    int received_state;
+    bool data_valid = false;
+
+    if (req->content_len > 0) {
+        if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
+            return httpd_resp_send_500(req);
+        }
+
+        data_valid = extract_data_from_json(buffer, "state", JSON_TYPE_INT, &received_state);
+        if (!data_valid) {
+            ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
+        }
+    }
+
+    int led_state = 0;
+    bool ok = messenger_send_with_response_generic(
+        server->messenger,
+        MESSAGE_LED,
+        (data_valid) ? &received_state : NULL,
+        &led_state,
+        sizeof(led_state)
+    );
+
+    if (ok) {
+        char *json = create_json("state", JSON_TYPE_INT, led_state, NULL);
+        return send_json_response(req, json);
     } else {
-        ESP_LOGE(TAG, "Failed to receive LED state");
-        vQueueDelete(message.response_queue);
+        return httpd_resp_send_500(req);
+    }
+}
+
+esp_err_t ledGet_handler(httpd_req_t *req) {
+    myServer *server = (myServer *)req->user_ctx;
+
+    int led_state = 0;
+    bool ok = messenger_send_with_response_generic(
+        server->messenger,
+        MESSAGE_LED,
+        NULL,
+        &led_state,
+        sizeof(led_state)
+    );
+
+    if (ok) {
+        char *json = create_json("state", JSON_TYPE_INT, led_state, NULL);
+        return send_json_response(req, json);
+    } else {
         return httpd_resp_send_500(req);
     }
 }
 
 esp_err_t dht11_handler(httpd_req_t *req) {
-    messenger_message_t message = {
-        .type = MESSAGE_DHT,
-        .data = NULL,
-        .response_queue = xQueueCreate(1, sizeof(dht_data_t))
-    };
-
-    messenger_send_message(&message);
+    myServer* server = (myServer* ) req->user_ctx;
 
     dht_data_t dht_data;
 
-    if (xQueueReceive(message.response_queue, &dht_data, portMAX_DELAY)) {
-        ESP_LOGI(TAG, "Received DHT data: Temperature: %.2f, Humidity: %.2f", dht_data.temperature, dht_data.humidity);
-        vQueueDelete(message.response_queue); // Clean up the response queue
-        
-        char *json_response = create_json("temperature", KEY_FLOAT, dht_data.temperature, "humidity", KEY_FLOAT, dht_data.humidity, NULL);
-        send_json_response(req, json_response);
-        free(json_response); // Free the JSON response string
-        return ESP_OK;
+    bool ok = messenger_send_with_response_generic(
+        server->messenger,
+        MESSAGE_DHT,
+        NULL,
+        &dht_data,
+        sizeof(dht_data_t)
+    );
+
+    if (ok) {
+        char* json = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature, 
+                                 "humidity", JSON_TYPE_FLOAT, dht_data.humidity, 
+                                 NULL);
+        return send_json_response(req, json);
     } else {
-        ESP_LOGE(TAG, "Failed to receive DHT data");
-        vQueueDelete(message.response_queue); // Clean up the response queue
         return httpd_resp_send_500(req);
     }
 }
 
 esp_err_t blink_handler(httpd_req_t *req) {
-    char buffer[32];
-    int received = -1;
+    myServer* server = (myServer* ) req->user_ctx;
+    char buffer[MAX_REQ_LEN];
+    int receivedFreq;
+    bool data_valid = false;
 
-    int content_len = req->content_len;
-    if (content_len > 0) {
-        int ret = httpd_req_recv(req, buffer, sizeof(buffer) - 1);
-        if (ret <= 0) {
+    if (req->content_len > 0) {
+        if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
             return httpd_resp_send_500(req);
         }
-        buffer[ret] = '\0'; 
 
-        cJSON *json = cJSON_Parse(buffer);
-        if (json == NULL) {
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to parse JSON");
+        data_valid = extract_data_from_json(buffer, "frequency", JSON_TYPE_INT, &receivedFreq);
+        if (!data_valid) {
+            ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
         }
-        cJSON *frequency = cJSON_GetObjectItem(json, "frequency");
-        if (!cJSON_IsNumber(frequency)) {
-            cJSON_Delete(json);
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid frequency value");
-        }
-        received = frequency->valueint;
-        cJSON_Delete(json);
-
     }
 
-    messenger_message_t message = {
-        .type = MESSAGE_BLINK,
-        .data = (received != -1) ? (int*)&received : NULL,
-        .response_queue = xQueueCreate(1, sizeof(int))
-    };
-    messenger_send_message(&message);
+    int blink_state = 0;
+    bool ok = messenger_send_with_response_generic(
+        server->messenger,
+        MESSAGE_BLINK,
+        (data_valid) ? &receivedFreq : NULL,
+        &blink_state,
+        sizeof(blink_state)
+    );
 
-    int state;
-    if (xQueueReceive(message.response_queue, &state, portMAX_DELAY)) {
-        vQueueDelete(message.response_queue);
-        char *json_response = create_json("state", KEY_INT, state, NULL);
-        send_json_response(req, json_response);
-        free(json_response);
-        return ESP_OK;
+    if (ok) {
+        char *json = create_json("state", JSON_TYPE_INT, blink_state, NULL);
+        return send_json_response(req, json);
     } else {
-        vQueueDelete(message.response_queue);
         return httpd_resp_send_500(req);
     }
+}
+
+/*####################################################################*/
+
+static static_route_t static_routes[] = {
+    { "/",           "/spiffs/index.html",      "text/html" },
+    { "/style.css",  "/spiffs/style.css",       "text/css" },
+    { "/main.js",    "/spiffs/main.js",         "application/javascript" }
+};
+
+static api_route_t api_routes[] = {
+    { "/ledSet", HTTP_POST, led_handler },
+    { "/ledGet", HTTP_POST, ledGet_handler },
+    { "/dht11",  HTTP_POST, dht11_handler },
+    { "/blink",  HTTP_POST, blink_handler }
+};
+
+/*####################################################################*/
+
+void server_init(myServer* server) {
+    server->config = (httpd_config_t)HTTPD_DEFAULT_CONFIG();
+    server->handle = NULL;
+
+    if (httpd_start(&(server->handle), &(server->config)) == ESP_OK) {
+        for (int i = 0; i < sizeof(static_routes) / sizeof(static_routes[0]); i++) {
+            httpd_uri_t uri_config = {
+                .uri = static_routes[i].uri,
+                .method = HTTP_GET,
+                .handler = static_file_handler,
+                .user_ctx = (void *)&static_routes[i]
+            };
+            httpd_register_uri_handler(server->handle, &uri_config);
+        }
+
+        for (size_t i = 0; i < sizeof(api_routes) / sizeof(api_routes[0]); i++) {
+            httpd_uri_t uri_config = {
+                .uri = api_routes[i].uri,
+                .method = api_routes[i].method,
+                .handler = api_routes[i].handler,
+                .user_ctx = (void *)server
+            };
+            httpd_register_uri_handler(server->handle, &uri_config);
+        }
+    }
+}
+
+void server_setMessenger(myServer* server, Messenger* messenger) {
+    server->messenger = messenger;
 }
