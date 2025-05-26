@@ -35,5 +35,6 @@ void messenger_send_message(Messenger* messenger, messenger_message_t *message);
 void messenger_register_handler(Messenger* messenger, messenger_message_type_t type, messenger_callback_t callback, void *context);
 void messenger_setResponse(messenger_message_t *message, void *data);
 bool messenger_send_with_response_generic(Messenger *messenger, messenger_message_type_t type, void *data, void *response_out, size_t response_size);
+void messenger_send_generic(Messenger *messenger, messenger_message_type_t type, void *data);
 
 #endif // MESSENGER_H

@@ -43,6 +43,7 @@ static void handle_dht(messenger_message_t *message, void *context) {
 /* ###################### MODULE EXTERNAL FUNCTIONS ######################*/
 
 void dht_init(myDHT* dht, int pin, dht_sensor_type_t type) {
+    ESP_LOGI(TAG, "Initializing DHT module on pin %d...", pin);
     dht->pin = pin;
     dht->type = type;
     dht->lastData.temperature = 25.0;
@@ -54,6 +55,7 @@ void dht_init(myDHT* dht, int pin, dht_sensor_type_t type) {
     gpio_set_direction(dht->pin, GPIO_MODE_INPUT);
 
     xTaskCreate(dht_task, "dht_task", 2048, dht, 5, NULL);
+    ESP_LOGI(TAG, "DHT module initialized.");
 }
 
 void dht_setMessenger(myDHT* dht, Messenger* messenger) {

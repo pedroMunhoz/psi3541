@@ -195,12 +195,69 @@ function deactivateBlink() {
     .catch(error => console.error('Error deactivating blink:', error));
 }
 
+// --- MQTT Task Control ---
+
+function fetchMqttTasks() {
+    fetch('/mqtt_tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const table = document.getElementById('mqtt-tasks-table').getElementsByTagName('tbody')[0];
+        table.innerHTML = '';
+        const numTasks = data.num_tasks;
+        for (let i = 1; i <= numTasks; i++) {
+            const active = data[i.toString()];
+            const row = table.insertRow();
+            row.insertCell().innerText = `Task ${i}`;
+            row.insertCell().innerText = active ? "Active" : "Inactive";
+            const actionCell = row.insertCell();
+            const btn = document.createElement('button');
+            btn.className = 'button ' + (active ? 'button-red' : 'button-green');
+            btn.innerText = active ? 'Stop' : 'Start';
+            btn.onclick = () => mqttTaskControl(i, active ? 'stop' : 'start');
+            actionCell.appendChild(btn);
+        }
+    })
+    .catch(error => console.error('Error fetching MQTT tasks:', error));
+}
+
+function mqttTaskControl(idx, action) {
+    fetch('/mqtt_task_control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idx: idx, action: action })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const table = document.getElementById('mqtt-tasks-table').getElementsByTagName('tbody')[0];
+        table.innerHTML = '';
+        const numTasks = data.num_tasks;
+        for (let i = 1; i <= numTasks; i++) {
+            const active = data[i.toString()];
+            const row = table.insertRow();
+            row.insertCell().innerText = `Task ${i}`;
+            row.insertCell().innerText = active ? "Active" : "Inactive";
+            const actionCell = row.insertCell();
+            const btn = document.createElement('button');
+            btn.className = 'button ' + (active ? 'button-red' : 'button-green');
+            btn.innerText = active ? 'Stop' : 'Start';
+            btn.onclick = () => mqttTaskControl(i, active ? 'stop' : 'start');
+            actionCell.appendChild(btn);
+        }
+    })
+    .catch(error => console.error('Error fetching MQTT tasks:', error));
+}
+
 window.addEventListener('load', () => {
     updateLEDState();
     initializeChart();
     updateDHT11();
+    fetchMqttTasks();
 });
 
 
-setInterval(updateDHT11, 2000);
-setInterval(updateLEDState, 500);
+setInterval(updateDHT11, 5000);
+// setInterval(updateLEDState, 500);
+// setInterval(fetchMqttTasks, 2000);

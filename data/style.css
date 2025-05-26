@@ -107,3 +107,8 @@ h1, h3 {
     background-color: #dc3545; /* Red for stopping */
     color: white;
 }
+
+#mqtt-tasks-table th, #mqtt-tasks-table td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}

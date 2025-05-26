@@ -28,6 +28,7 @@ static const char *TAG = "wifi_connect";
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
 {
+    ESP_LOGI(TAG, "WiFi event: base=%s, id=%ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
         esp_wifi_connect();
@@ -49,6 +50,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
+        ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP received");
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
@@ -78,6 +80,7 @@ void start_mdns_service()
 
 void connect_wifi(void)
 {
+    ESP_LOGI(TAG, "Initializing WiFi...");
     s_wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -101,6 +104,7 @@ void connect_wifi(void)
         strncpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
         wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
+        ESP_LOGI(TAG, "Configuring WiFi: SSID=%s", ssid);
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
         ESP_ERROR_CHECK(esp_wifi_start());
@@ -133,4 +137,5 @@ void connect_wifi(void)
 
     // Start mDNS
     start_mdns_service();
+    ESP_LOGI(TAG, "WiFi initialization complete.");
 }

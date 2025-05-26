@@ -3,6 +3,7 @@
 static const char *TAG = "FileSystem";
 
 void filesystem_start(Filesystem* fs) {
+    ESP_LOGI(TAG, "Initializing SPIFFS filesystem...");
     fs->conf.base_path = "/spiffs";
     fs->conf.partition_label = NULL;
     fs->conf.max_files = 5;
@@ -25,6 +26,7 @@ void filesystem_start(Filesystem* fs) {
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
     }
+    ESP_LOGI(TAG, "SPIFFS filesystem initialized.");
 }
 
 size_t filesystem_getTotal(Filesystem* fs) {

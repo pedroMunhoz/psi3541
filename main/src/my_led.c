@@ -73,6 +73,7 @@ static void handle_blink(messenger_message_t *message, void* context) {
 
 /* ###################### MODULE EXTERNAL FUNCTIONS ######################*/
 void led_init(myLED* led, int pin) {
+    ESP_LOGI(TAG, "Initializing LED module on pin %d...", pin);
     led->blink_freq=1;
     led->pin=pin;
     led->state = 0;
@@ -83,6 +84,7 @@ void led_init(myLED* led, int pin) {
     gpio_set_direction(led->pin, GPIO_MODE_INPUT_OUTPUT);
 
     xTaskCreate(led_task, "led_task", 2048, led, 5, NULL);
+    ESP_LOGI(TAG, "LED module initialized.");
 }
 
 void led_setMessenger(myLED* led, Messenger* messenger) {

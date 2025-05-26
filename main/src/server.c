@@ -2,7 +2,7 @@
 
 static const char *TAG = "server"; // TAG for debug
 
-char *create_json(const char *key, ...) {
+static char *create_json(const char *key, ...) {
     cJSON *json = cJSON_CreateObject();
     if (!json) {
         return NULL;
@@ -41,7 +41,7 @@ char *create_json(const char *key, ...) {
     return response;
 }
 
-esp_err_t read_request_body(httpd_req_t *req, char *buffer, size_t max_len) {
+static esp_err_t read_request_body(httpd_req_t *req, char *buffer, size_t max_len) {
     int ret = httpd_req_recv(req, buffer, max_len - 1);
     if (ret <= 0) {
         ESP_LOGE(TAG, "Failed to read request body");
@@ -51,7 +51,7 @@ esp_err_t read_request_body(httpd_req_t *req, char *buffer, size_t max_len) {
     return ESP_OK;
 }
 
-bool extract_data_from_json(const char *json_str, const char *key, json_key_type_t type, void *out_val) {
+static bool extract_data_from_json(const char *json_str, const char *key, json_key_type_t type, void *out_val) {
     cJSON *json = cJSON_Parse(json_str);
     if (!json) return false;
 
@@ -87,13 +87,19 @@ bool extract_data_from_json(const char *json_str, const char *key, json_key_type
                 valid = true;
             }
             break;
+        case JSON_TYPE_BOOL:
+            if (cJSON_IsBool(item)) {
+                *(bool *)out_val = cJSON_IsTrue(item);
+                valid = true;
+            }
+            break;
     }
 
     cJSON_Delete(json);
     return valid;
 }
 
-esp_err_t send_json_response(httpd_req_t *req, char *json_str) {
+static esp_err_t send_json_response(httpd_req_t *req, char *json_str) {
     if (!json_str) return httpd_resp_send_500(req);
 
     httpd_resp_set_type(req, "application/json");
@@ -134,7 +140,7 @@ static esp_err_t static_file_handler(httpd_req_t *req) {
 
 /*####################################################################*/
 
-esp_err_t led_handler(httpd_req_t *req) {
+static esp_err_t led_handler(httpd_req_t *req) {
     myServer *server = (myServer *)req->user_ctx;
     char buffer[MAX_REQ_LEN];
     int received_state;
@@ -169,7 +175,7 @@ esp_err_t led_handler(httpd_req_t *req) {
     }
 }
 
-esp_err_t ledGet_handler(httpd_req_t *req) {
+static esp_err_t ledGet_handler(httpd_req_t *req) {
     myServer *server = (myServer *)req->user_ctx;
 
     int led_state = 0;
@@ -189,7 +195,7 @@ esp_err_t ledGet_handler(httpd_req_t *req) {
     }
 }
 
-esp_err_t dht11_handler(httpd_req_t *req) {
+static esp_err_t dht11_handler(httpd_req_t *req) {
     myServer* server = (myServer* ) req->user_ctx;
 
     dht_data_t dht_data;
@@ -212,7 +218,7 @@ esp_err_t dht11_handler(httpd_req_t *req) {
     }
 }
 
-esp_err_t blink_handler(httpd_req_t *req) {
+static esp_err_t blink_handler(httpd_req_t *req) {
     myServer* server = (myServer* ) req->user_ctx;
     char buffer[MAX_REQ_LEN];
     int receivedFreq;
@@ -225,8 +231,8 @@ esp_err_t blink_handler(httpd_req_t *req) {
 
         data_valid = extract_data_from_json(buffer, "frequency", JSON_TYPE_INT, &receivedFreq);
         if (!data_valid) {
-            ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
+            ESP_LOGE(TAG, "Invalid or missing 'frequency' in JSON");
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'frequency'");
         }
     }
 
@@ -247,6 +253,83 @@ esp_err_t blink_handler(httpd_req_t *req) {
     }
 }
 
+static esp_err_t mqtt_tasks_hanlder(httpd_req_t* req) {
+    myServer* server = (myServer* ) req->user_ctx;
+
+    bool status[MQTT_MAX_PUB_TASKS];
+
+    bool ok = messenger_send_with_response_generic(
+        server->messenger,
+        MESSAGE_MQTT_STATUS,
+        NULL,
+        status,
+        sizeof(status)
+    );
+
+    if (ok) {
+        cJSON *json_obj = cJSON_CreateObject();
+        if (!json_obj) return httpd_resp_send_500(req);
+
+        cJSON_AddNumberToObject(json_obj, "num_tasks", MQTT_MAX_PUB_TASKS);
+        for (int i = 0; i < MQTT_MAX_PUB_TASKS; ++i) {
+            char key[8];
+            snprintf(key, sizeof(key), "%d", i + 1);
+            cJSON_AddBoolToObject(json_obj, key, status[i]);
+        }
+        char *json = cJSON_PrintUnformatted(json_obj);
+        cJSON_Delete(json_obj);
+        return send_json_response(req, json);
+    } else {
+        return httpd_resp_send_500(req);
+    }
+}
+
+static esp_err_t mqtt_task_control_handler(httpd_req_t *req) {
+    myServer* server = (myServer* ) req->user_ctx;
+    char buffer[MAX_REQ_LEN];
+    int taskIndex;
+    char action[8];
+    bool data_valid = false;
+
+    if (req->content_len > 0) {
+        if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
+            return httpd_resp_send_500(req);
+        }
+
+        data_valid = extract_data_from_json(buffer, "idx", JSON_TYPE_INT, &taskIndex);
+        data_valid = data_valid && extract_data_from_json(buffer, "action", JSON_TYPE_STRING, &action);
+        if (!data_valid) {
+            ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
+        }
+    }
+
+    messenger_message_type_t type;
+    if (strcasecmp(action, "start") == 0) {
+        type = MESSAGE_MQTT_START;
+    } else if (strcasecmp(action, "stop") == 0) {
+        type = MESSAGE_MQTT_STOP;
+    } else {
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid action");
+    }
+
+    int success = 0;
+    bool ok = messenger_send_with_response_generic(
+        server->messenger,
+        type,
+        &taskIndex,
+        &success,
+        sizeof(int)
+    );
+
+    if (ok) {
+        char *json = create_json("success", JSON_TYPE_INT, success, NULL);
+        return send_json_response(req, json);
+    } else {
+        return httpd_resp_send_500(req);
+    }
+}
+
 /*####################################################################*/
 
 static static_route_t static_routes[] = {
@@ -256,19 +339,24 @@ static static_route_t static_routes[] = {
 };
 
 static api_route_t api_routes[] = {
-    { "/ledSet", HTTP_POST, led_handler },
-    { "/ledGet", HTTP_POST, ledGet_handler },
-    { "/dht11",  HTTP_POST, dht11_handler },
-    { "/blink",  HTTP_POST, blink_handler }
+    { "/ledSet",                HTTP_POST, led_handler },
+    { "/ledGet",                HTTP_POST, ledGet_handler },
+    { "/dht11",                 HTTP_POST, dht11_handler },
+    { "/blink",                 HTTP_POST, blink_handler },
+    { "/mqtt_task_control",     HTTP_POST, mqtt_task_control_handler },
+    { "/mqtt_tasks",            HTTP_POST, mqtt_tasks_hanlder }
 };
 
 /*####################################################################*/
 
 void server_init(myServer* server) {
+    ESP_LOGI(TAG, "Initializing HTTP server...");
     server->config = (httpd_config_t)HTTPD_DEFAULT_CONFIG();
+    server->config.max_uri_handlers = 10;
     server->handle = NULL;
 
     if (httpd_start(&(server->handle), &(server->config)) == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP server started.");
         for (int i = 0; i < sizeof(static_routes) / sizeof(static_routes[0]); i++) {
             httpd_uri_t uri_config = {
                 .uri = static_routes[i].uri,
@@ -288,6 +376,7 @@ void server_init(myServer* server) {
             };
             httpd_register_uri_handler(server->handle, &uri_config);
         }
+        ESP_LOGI(TAG, "HTTP server URI handlers registered.");
     }
 }
 

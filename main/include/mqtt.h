@@ -1,37 +1,49 @@
 #ifndef MQTT_H
 #define MQTT_H
 
+#include <stdlib.h>
+
 #include <cJSON.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
-#include "protocol_examples_common.h"
 #include "esp_event.h"
-#include "freertos/event_groups.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
 #include "esp_log.h"
-
 #include "mqtt_client.h"
-
 #include "project.h"
 #include "Messenger.h"
+#include <stdbool.h>
 
 #define MAX_MQTT_TOPICS 10
+#define MQTT_MAX_REQ_LEN 128
 
-extern const uint8_t client_cert_pem_start[] asm("_binary_client_crt_start");
-extern const uint8_t client_cert_pem_end[] asm("_binary_client_crt_end");
-extern const uint8_t client_key_pem_start[] asm("_binary_client_key_start");
-extern const uint8_t client_key_pem_end[] asm("_binary_client_key_end");
-extern const uint8_t server_cert_pem_start[] asm("_binary_AmazonRootCA1_pem_start");
-extern const uint8_t server_cert_pem_end[] asm("_binary_AmazonRootCA1_pem_end");
+typedef struct Mqtt Mqtt;
+typedef esp_err_t (*mqtt_api_handler_t)(Mqtt *mqtt, const char *payload, int payload_len);
 
 typedef struct {
     const char *topic;
-    void (*handler)(const char *data, int data_len);
-} mqtt_topic_t;
+    mqtt_api_handler_t handler;
+    void *ctx;
+} mqtt_api_route_t;
 
-void mqtt_app_start(void);
-void task_publish_dht11(void *arg);
+typedef void (*mqtt_publish_task_fn)(void *arg);
+
+typedef struct {
+    const char *name;
+    mqtt_publish_task_fn fn;
+    TaskHandle_t handle;
+    bool active;
+} mqtt_publish_task_entry_t;
+
+struct Mqtt {
+    esp_mqtt_client_handle_t client;
+    Messenger *messenger;
+    bool connected;
+    mqtt_publish_task_entry_t pub_tasks[MQTT_MAX_PUB_TASKS];
+    int pub_task_count;
+};
+
+void mqtt_init(Mqtt *mqtt);
+void mqtt_setMessenger(Mqtt *mqtt, Messenger *messenger);
 
 #endif // MQTT_H

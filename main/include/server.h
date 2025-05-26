@@ -18,13 +18,6 @@
 #define URI_ENTRY(_uri, _method, _handler) \
     { .uri = _uri, .method = _method, .handler = _handler, .user_ctx = NULL }
 
-typedef enum {
-    JSON_TYPE_INT,
-    JSON_TYPE_FLOAT,
-    JSON_TYPE_STRING,
-    JSON_TYPE_DOUBLE
-} json_key_type_t;
-
 typedef struct {
     const char *uri;
     const char *filepath;

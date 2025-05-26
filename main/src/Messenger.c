@@ -1,5 +1,8 @@
 #include "Messenger.h"
 
+#define MESSENGER_MSG_TIMEOUT pdMS_TO_TICKS(2000)     // 2 seconds for message receive
+#define MESSENGER_RESP_TIMEOUT pdMS_TO_TICKS(2000)    // 2 seconds for response receive
+
 static const char *TAG = "Messenger";
 
 static void messenger_task(void *param) {
@@ -7,20 +10,27 @@ static void messenger_task(void *param) {
     messenger_message_t message;
 
     while (1) {
-        if (xQueueReceive(messenger->msg_queue, &message, portMAX_DELAY)) {
+        if (xQueueReceive(messenger->msg_queue, &message, MESSENGER_MSG_TIMEOUT)) {
+            bool handled = false;
             for (int i = 0; i < messenger->handler_count; i++) {
                 if (messenger->handlers[i].type == message.type) {
                     if (messenger->handlers[i].callback) {
                         messenger->handlers[i].callback(&message, messenger->handlers[i].context);
+                        handled = true;
                     }
                     break;
                 }
             }
+            if (!handled) {
+                ESP_LOGW(TAG, "No handler for message type %d", message.type);
+            }
         }
+        // else: Timeout, loop again (can add a vTaskDelay if desired)
     }
 }
 
 void messenger_init(Messenger* messenger) {
+    ESP_LOGI(TAG, "Initializing Messenger...");
     messenger->handler_count = 0;
 
     messenger->msg_queue = xQueueCreate(MESSENGER_QUEUE_SIZE, sizeof(messenger_message_t));
@@ -30,11 +40,12 @@ void messenger_init(Messenger* messenger) {
     }
 
     xTaskCreate(messenger_task, "MessengerTask", 2048, messenger, 5, NULL);
+    ESP_LOGI(TAG, "Messenger initialized.");
 }
 
 void messenger_send_message(Messenger* messenger, messenger_message_t *message) {
-    if (xQueueSend(messenger->msg_queue, message, portMAX_DELAY) != pdPASS) {
-        ESP_LOGE(TAG, "Failed to send message to Messenger");
+    if (xQueueSend(messenger->msg_queue, message, MESSENGER_MSG_TIMEOUT) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to send message to Messenger (timeout)");
     }
 }
 
@@ -51,10 +62,21 @@ void messenger_register_handler(Messenger* messenger, messenger_message_type_t t
 
 void messenger_setResponse(messenger_message_t *message, void *data) {
     if (message->response_queue != NULL) {
-        if (xQueueSend(message->response_queue, data, portMAX_DELAY) != pdPASS) {
-            ESP_LOGE(TAG, "Failed to send response to the response queue");
+        if (xQueueSend(message->response_queue, data, MESSENGER_RESP_TIMEOUT) != pdPASS) {
+            ESP_LOGE(TAG, "Failed to send response to the response queue (timeout)");
         }
     }
+}
+
+void messenger_send_generic(Messenger *messenger, messenger_message_type_t type, void *data) {
+
+    messenger_message_t message = {
+        .type = type,
+        .data = data,
+        .response_queue = NULL
+    };
+
+    messenger_send_message(messenger, &message);
 }
 
 bool messenger_send_with_response_generic(Messenger *messenger, messenger_message_type_t type, void *data, void *response_out, size_t response_size) {
@@ -72,7 +94,10 @@ bool messenger_send_with_response_generic(Messenger *messenger, messenger_messag
 
     messenger_send_message(messenger, &message);
 
-    bool success = xQueueReceive(response_queue, response_out, portMAX_DELAY);
+    bool success = xQueueReceive(response_queue, response_out, MESSENGER_RESP_TIMEOUT);
+    if (!success) {
+        ESP_LOGE(TAG, "Timeout waiting for response to message type %d", type);
+    }
     vQueueDelete(response_queue);
     return success;
 }
