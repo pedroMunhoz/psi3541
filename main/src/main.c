@@ -10,6 +10,8 @@
 #include "my_led.h"
 #include "my_dht.h"
 
+static const char *TAG = "main";
+
 typedef struct {
     Messenger messenger;
     myDHT dht;
@@ -19,7 +21,7 @@ typedef struct {
     Mqtt mqtt;
 } System;
 
-System sys;
+static System sys;
 
 void app_main() {
     // Initialize NVS
@@ -44,9 +46,9 @@ void app_main() {
     connect_wifi();
 
     if (wifi_connect_status) {
-        server_init(&sys.server);
         server_setMessenger(&sys.server, &sys.messenger);
-        
+        server_init(&sys.server);
+
         mqtt_init(&sys.mqtt);
         mqtt_setMessenger(&sys.mqtt, &sys.messenger);
         int idx = 0;

@@ -236,7 +236,7 @@ static void handle_mqtt_message(messenger_message_t *message, void *context) {
 
     switch (message->type) {
         case MESSAGE_MQTT_START: {
-            int idx = *((int*)message->data);
+            int idx = message->int_data;
             int result = 0;
             if (idx >= 0 && idx < mqtt->pub_task_count && !mqtt->pub_tasks[idx].active) {
                 result = xTaskCreate(mqtt->pub_tasks[idx].fn, mqtt->pub_tasks[idx].name, 4096, mqtt, 5, &mqtt->pub_tasks[idx].handle);
@@ -250,7 +250,7 @@ static void handle_mqtt_message(messenger_message_t *message, void *context) {
             break;
         }
         case MESSAGE_MQTT_STOP: {
-            int idx = *((int*)message->data);
+            int idx = message->int_data;
             int result = 1;
             if (idx >= 0 && idx < mqtt->pub_task_count && mqtt->pub_tasks[idx].active) {
                 if (mqtt->pub_tasks[idx].handle != NULL) {

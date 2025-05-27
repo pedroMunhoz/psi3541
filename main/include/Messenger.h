@@ -13,6 +13,7 @@
 typedef struct {
     messenger_message_type_t type;
     void *data;
+    int int_data;
     QueueHandle_t response_queue;
 } messenger_message_t;
 
@@ -36,5 +37,7 @@ void messenger_register_handler(Messenger* messenger, messenger_message_type_t t
 void messenger_setResponse(messenger_message_t *message, void *data);
 bool messenger_send_with_response_generic(Messenger *messenger, messenger_message_type_t type, void *data, void *response_out, size_t response_size);
 void messenger_send_generic(Messenger *messenger, messenger_message_type_t type, void *data);
+void messenger_send_int(Messenger *messenger, messenger_message_type_t type, int int_data);
+bool messenger_send_with_response(Messenger *messenger, messenger_message_type_t type, int int_data, void *response_out, size_t response_size);
 
 #endif // MESSENGER_H

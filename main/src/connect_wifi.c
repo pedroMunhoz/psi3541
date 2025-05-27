@@ -59,17 +59,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
 }
 
-void ask_for_credentials(char *ssid, char *password)
-{
-    printf("Enter WiFi SSID: ");
-    fgets(ssid, 32, stdin);
-    ssid[strcspn(ssid, "\n")] = '\0'; // remove newline
-
-    printf("Enter WiFi Password: ");
-    fgets(password, 64, stdin);
-    password[strcspn(password, "\n")] = '\0'; // remove newline
-}
-
 void start_mdns_service()
 {
     ESP_ERROR_CHECK(mdns_init());
@@ -126,7 +115,6 @@ void connect_wifi(void)
             ESP_LOGW(TAG, "Failed to connect to SSID:%s", ssid);
             s_retry_num = 0;
             ESP_ERROR_CHECK(esp_wifi_stop());
-            ask_for_credentials(ssid, password);
             xEventGroupClearBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
 

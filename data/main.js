@@ -197,29 +197,60 @@ function deactivateBlink() {
 
 // --- MQTT Task Control ---
 
+function renderMqttTasksTable(data) {
+    const table = document.getElementById('mqtt-tasks-table').getElementsByTagName('tbody')[0];
+    table.innerHTML = '';
+    const numTasks = data.num_tasks;
+
+    // Store edited names in localStorage
+    let taskNames = JSON.parse(localStorage.getItem('mqttTaskNames') || '{}');
+
+    for (let i = 1; i <= numTasks; i++) {
+        const active = data[i.toString()];
+        const row = table.insertRow();
+
+        // Editable name cell
+        const nameCell = row.insertCell();
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = taskNames[i] || `Task ${i}`;
+        nameInput.className = 'mqtt-task-name-input'; // <-- add this line
+        nameInput.onchange = () => {
+            taskNames[i] = nameInput.value;
+            localStorage.setItem('mqttTaskNames', JSON.stringify(taskNames));
+        };
+        nameCell.appendChild(nameInput);
+
+        // Status+Switch cell
+        const statusCell = row.insertCell();
+        const label = document.createElement('label');
+        label.className = 'switch';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = active;
+        checkbox.onchange = () => mqttTaskControl(i, checkbox.checked ? 'start' : 'stop');
+        const slider = document.createElement('span');
+        slider.className = 'slider round';
+        label.appendChild(checkbox);
+        label.appendChild(slider);
+
+        // Status text
+        const statusText = document.createElement('span');
+        statusText.textContent = active ? " Active" : " Inactive";
+        statusText.style.marginLeft = "10px";
+
+        statusCell.appendChild(label);
+        statusCell.appendChild(statusText);
+    }
+}
+
 function fetchMqttTasks() {
     fetch('/mqtt_tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
-    .then(data => {
-        const table = document.getElementById('mqtt-tasks-table').getElementsByTagName('tbody')[0];
-        table.innerHTML = '';
-        const numTasks = data.num_tasks;
-        for (let i = 1; i <= numTasks; i++) {
-            const active = data[i.toString()];
-            const row = table.insertRow();
-            row.insertCell().innerText = `Task ${i}`;
-            row.insertCell().innerText = active ? "Active" : "Inactive";
-            const actionCell = row.insertCell();
-            const btn = document.createElement('button');
-            btn.className = 'button ' + (active ? 'button-red' : 'button-green');
-            btn.innerText = active ? 'Stop' : 'Start';
-            btn.onclick = () => mqttTaskControl(i, active ? 'stop' : 'start');
-            actionCell.appendChild(btn);
-        }
-    })
+    .then(data => renderMqttTasksTable(data))
     .catch(error => console.error('Error fetching MQTT tasks:', error));
 }
 
@@ -227,27 +258,10 @@ function mqttTaskControl(idx, action) {
     fetch('/mqtt_task_control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idx: idx, action: action })
+        body: JSON.stringify({ idx: idx-1, action: action })
     })
-    .then(response => response.json())
-    .then(data => {
-        const table = document.getElementById('mqtt-tasks-table').getElementsByTagName('tbody')[0];
-        table.innerHTML = '';
-        const numTasks = data.num_tasks;
-        for (let i = 1; i <= numTasks; i++) {
-            const active = data[i.toString()];
-            const row = table.insertRow();
-            row.insertCell().innerText = `Task ${i}`;
-            row.insertCell().innerText = active ? "Active" : "Inactive";
-            const actionCell = row.insertCell();
-            const btn = document.createElement('button');
-            btn.className = 'button ' + (active ? 'button-red' : 'button-green');
-            btn.innerText = active ? 'Stop' : 'Start';
-            btn.onclick = () => mqttTaskControl(i, active ? 'stop' : 'start');
-            actionCell.appendChild(btn);
-        }
-    })
-    .catch(error => console.error('Error fetching MQTT tasks:', error));
+    .then(() => fetchMqttTasks())
+    .catch(error => console.error('Error controlling MQTT task:', error));
 }
 
 window.addEventListener('load', () => {

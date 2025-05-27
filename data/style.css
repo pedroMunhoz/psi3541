@@ -112,3 +112,57 @@ h1, h3 {
     padding: 8px;
     border-bottom: 1px solid #ddd;
 }
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+.switch input { display: none; }
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 22px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px; width: 18px;
+  left: 2px; bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: #2196F3;
+}
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+/* Editable MQTT task name styling */
+.mqtt-task-name-input {
+    font-size: 1rem;
+    font-family: inherit;
+    color: #222;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #bbbbbb56;
+    outline: none;
+    width: auto;
+    min-width: 40px;
+    max-width: 100%;
+    text-align: center;
+    transition: border-color 0.2s;
+    margin: 0;
+    padding: 2px 0 2px 0;
+    display: inline-block;
+}
+.mqtt-task-name-input:focus {
+    border-bottom: 1.5px solid #03407856;
+    background: #f4f4f956;
+}

@@ -42,9 +42,9 @@ static void blink_task(void *pvParameter) {
 static void handle_led(messenger_message_t *message, void* context) {
     myLED* led = (myLED*) context;
 
-    if (message->data != NULL) {
-        int *state = (int *)message->data;
-        gpio_set_level(led->pin, *state);
+    if (message->int_data != -1) {
+        int state = message->int_data;
+        gpio_set_level(led->pin, state);
 
     }
     led->lastState = led->state;
@@ -56,9 +56,9 @@ static void handle_led(messenger_message_t *message, void* context) {
 static void handle_blink(messenger_message_t *message, void* context) {
     myLED* led = (myLED*) context;
 
-    if (message->data != NULL) {
-        int *frequency = (int *)message->data;
-        led->blink_freq = *frequency;
+    if (message->int_data != -1) {
+        int frequency = message->int_data;
+        led->blink_freq = frequency;
     } else {
         if (xTaskGetHandle("blink_task") != NULL) {
             vTaskDelete(xTaskGetHandle("blink_task"));

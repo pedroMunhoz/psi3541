@@ -51,7 +51,7 @@ static esp_err_t read_request_body(httpd_req_t *req, char *buffer, size_t max_le
     return ESP_OK;
 }
 
-static bool extract_data_from_json(const char *json_str, const char *key, json_key_type_t type, void *out_val) {
+static bool extract_data_from_json(const char *json_str, const char *key, json_key_type_t type, void *out_val, size_t out_len) {
     cJSON *json = cJSON_Parse(json_str);
     if (!json) return false;
 
@@ -82,11 +82,12 @@ static bool extract_data_from_json(const char *json_str, const char *key, json_k
 
         case JSON_TYPE_STRING:
             if (cJSON_IsString(item) && item->valuestring) {
-                strncpy((char *)out_val, item->valuestring, MAX_STRING_LEN - 1);
-                ((char *)out_val)[MAX_STRING_LEN - 1] = '\0';
+                strncpy((char *)out_val, item->valuestring, out_len - 1);
+                ((char *)out_val)[out_len - 1] = '\0';
                 valid = true;
             }
             break;
+
         case JSON_TYPE_BOOL:
             if (cJSON_IsBool(item)) {
                 *(bool *)out_val = cJSON_IsTrue(item);
@@ -151,7 +152,7 @@ static esp_err_t led_handler(httpd_req_t *req) {
             return httpd_resp_send_500(req);
         }
 
-        data_valid = extract_data_from_json(buffer, "state", JSON_TYPE_INT, &received_state);
+        data_valid = extract_data_from_json(buffer, "state", JSON_TYPE_INT, &received_state, sizeof(int));
         if (!data_valid) {
             ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
@@ -159,10 +160,10 @@ static esp_err_t led_handler(httpd_req_t *req) {
     }
 
     int led_state = 0;
-    bool ok = messenger_send_with_response_generic(
+    bool ok = messenger_send_with_response(
         server->messenger,
         MESSAGE_LED,
-        (data_valid) ? &received_state : NULL,
+        (data_valid) ? received_state : -1,
         &led_state,
         sizeof(led_state)
     );
@@ -229,7 +230,7 @@ static esp_err_t blink_handler(httpd_req_t *req) {
             return httpd_resp_send_500(req);
         }
 
-        data_valid = extract_data_from_json(buffer, "frequency", JSON_TYPE_INT, &receivedFreq);
+        data_valid = extract_data_from_json(buffer, "frequency", JSON_TYPE_INT, &receivedFreq, sizeof(int));
         if (!data_valid) {
             ESP_LOGE(TAG, "Invalid or missing 'frequency' in JSON");
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'frequency'");
@@ -237,10 +238,10 @@ static esp_err_t blink_handler(httpd_req_t *req) {
     }
 
     int blink_state = 0;
-    bool ok = messenger_send_with_response_generic(
+    bool ok = messenger_send_with_response(
         server->messenger,
         MESSAGE_BLINK,
-        (data_valid) ? &receivedFreq : NULL,
+        (data_valid) ? receivedFreq : -1,
         &blink_state,
         sizeof(blink_state)
     );
@@ -253,7 +254,7 @@ static esp_err_t blink_handler(httpd_req_t *req) {
     }
 }
 
-static esp_err_t mqtt_tasks_hanlder(httpd_req_t* req) {
+static esp_err_t mqtt_tasks_handler(httpd_req_t* req) {
     myServer* server = (myServer* ) req->user_ctx;
 
     bool status[MQTT_MAX_PUB_TASKS];
@@ -285,7 +286,8 @@ static esp_err_t mqtt_tasks_hanlder(httpd_req_t* req) {
 }
 
 static esp_err_t mqtt_task_control_handler(httpd_req_t *req) {
-    myServer* server = (myServer* ) req->user_ctx;
+    myServer *server = (myServer *)req->user_ctx;
+
     char buffer[MAX_REQ_LEN];
     int taskIndex;
     char action[8];
@@ -296,8 +298,8 @@ static esp_err_t mqtt_task_control_handler(httpd_req_t *req) {
             return httpd_resp_send_500(req);
         }
 
-        data_valid = extract_data_from_json(buffer, "idx", JSON_TYPE_INT, &taskIndex);
-        data_valid = data_valid && extract_data_from_json(buffer, "action", JSON_TYPE_STRING, &action);
+        data_valid = extract_data_from_json(buffer, "idx", JSON_TYPE_INT, &taskIndex, sizeof(int));
+        data_valid = data_valid && extract_data_from_json(buffer, "action", JSON_TYPE_STRING, action, sizeof(action));
         if (!data_valid) {
             ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
@@ -344,7 +346,7 @@ static api_route_t api_routes[] = {
     { "/dht11",                 HTTP_POST, dht11_handler },
     { "/blink",                 HTTP_POST, blink_handler },
     { "/mqtt_task_control",     HTTP_POST, mqtt_task_control_handler },
-    { "/mqtt_tasks",            HTTP_POST, mqtt_tasks_hanlder }
+    { "/mqtt_tasks",            HTTP_POST, mqtt_tasks_handler }
 };
 
 /*####################################################################*/

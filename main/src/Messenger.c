@@ -79,6 +79,17 @@ void messenger_send_generic(Messenger *messenger, messenger_message_type_t type,
     messenger_send_message(messenger, &message);
 }
 
+void messenger_send_int(Messenger *messenger, messenger_message_type_t type, int int_data) {
+
+    messenger_message_t message = {
+        .type = type,
+        .int_data = int_data,
+        .response_queue = NULL
+    };
+
+    messenger_send_message(messenger, &message);
+}
+
 bool messenger_send_with_response_generic(Messenger *messenger, messenger_message_type_t type, void *data, void *response_out, size_t response_size) {
     QueueHandle_t response_queue = xQueueCreate(1, response_size);
     if (!response_queue) {
@@ -89,6 +100,30 @@ bool messenger_send_with_response_generic(Messenger *messenger, messenger_messag
     messenger_message_t message = {
         .type = type,
         .data = data,
+        .response_queue = response_queue
+    };
+
+    messenger_send_message(messenger, &message);
+
+    bool success = xQueueReceive(response_queue, response_out, MESSENGER_RESP_TIMEOUT);
+    if (!success) {
+        ESP_LOGE(TAG, "Timeout waiting for response to message type %d", type);
+    }
+    vQueueDelete(response_queue);
+    return success;
+}
+
+
+bool messenger_send_with_response(Messenger *messenger, messenger_message_type_t type, int int_data, void *response_out, size_t response_size) {
+    QueueHandle_t response_queue = xQueueCreate(1, response_size);
+    if (!response_queue) {
+        ESP_LOGE(TAG, "Failed to create response queue");
+        return false;
+    }
+
+    messenger_message_t message = {
+        .type = type,
+        .int_data = int_data,
         .response_queue = response_queue
     };
 
