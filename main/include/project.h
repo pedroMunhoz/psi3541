@@ -12,11 +12,9 @@
 
 #define MQTT_MAX_PUB_TASKS 4
 
+typedef int Pin;
+
 typedef enum {
-    MESSAGE_LED,
-    MESSAGE_LED_CHANGED,
-    MESSAGE_DHT,
-    MESSAGE_BLINK,
     MESSAGE_MQTT_START,
     MESSAGE_MQTT_STOP,
     MESSAGE_MQTT_STATUS,
