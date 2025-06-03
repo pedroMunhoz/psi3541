@@ -7,8 +7,10 @@
 #include <stdbool.h>
 #include "esp_log.h"
 
-#define LED_PIN 2
-#define DHT_PIN 4
+#define CAR_IN_1 12
+#define CAR_IN_2 14
+#define CAR_IN_3 27
+#define CAR_IN_4 26
 
 #define MQTT_MAX_PUB_TASKS 4
 
@@ -18,6 +20,7 @@ typedef enum {
     MESSAGE_MQTT_START,
     MESSAGE_MQTT_STOP,
     MESSAGE_MQTT_STATUS,
+    MESSAGE_CAR_MOVE,
     MESSAGE_UNKNOWN
 } messenger_message_type_t;
 

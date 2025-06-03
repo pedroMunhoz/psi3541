@@ -18,50 +18,39 @@
 
 
     <div class="content">
-        <!-- First Row: LED and DHT Cards -->
+        <!-- Car Control Row -->
         <div class="row">
-            <!-- LED Control Card -->
-            <div class="card" id="led-card">
-                <!-- LED Control Menu -->
-                <div id="led-menu">
-                    <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i> <strong>GPIO2</strong></p>
-                    <p>GPIO state: <strong id="gpio-state">UNKNOWN</strong></p>
-                    <p>
-                        <button class="button" onclick="ledSet(1)">ON</button>
-                        <button class="button button2" onclick="ledSet(0)">OFF</button>
-                    </p>
-                    <p>
-                        <button class="button button-green" onclick="activateBlink()">Activate Blink</button>
-                    </p>
+            <div class="card full-width" id="car-control-card" style="text-align:center;">
+                <h3>Car Control</h3>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
+                    <div>
+                        <button class="button car-move-btn" data-move="rot-left" title="Rotate Left">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button class="button car-move-btn" data-move="front" title="Front">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button class="button car-move-btn" data-move="rot-right" title="Rotate Right">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <button class="button car-move-btn" data-move="left" title="Left">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <button class="button button-red car-move-btn" data-move="stop" title="Stop">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <button class="button car-move-btn" data-move="right" title="Right">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <button class="button car-move-btn" data-move="back" title="Back">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                    </div>
                 </div>
-
-                <!-- BLINK Control Menu -->
-                <div id="blink-menu" style="display: none;">
-                    <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i> <strong>GPIO2</strong></p>
-                    <p>GPIO state: <strong id="gpio-state">BLINKING</strong></p>
-                    <p>
-                        Frequency (Hz): <input type="number" id="blink-frequency" min="1" max="10" value="1" style="width: 60px;">
-                        <button class="button" onclick="setBlinkFrequency()">Save Frequency</button>
-                    </p>
-                    <p>
-                        <button class="button button-red" onclick="deactivateBlink()">Deactivate Blink</button>
-                    </p>
-                </div>
-            </div>
-
-            <!-- Temperature and Humidity Card -->
-            <div class="card">
-                <p><i class="fas fa-thermometer-half fa-2x" style="color:#ff5733;"></i> <strong>Temperature & Humidity</strong></p>
-                <p>Temperature: <strong id="temperature">-- C</strong></p>
-                <p>Humidity: <strong id="humidity">-- %</strong></p>
-            </div>
-        </div>
-
-        <!-- Second Row: Temperature and Humidity Graphs -->
-        <div class="row">
-            <div class="card full-width">
-                <h3>Temperature and Humidity Graph</h3>
-                <canvas id="dht-chart" width="400" height="200"></canvas>
             </div>
         </div>
 

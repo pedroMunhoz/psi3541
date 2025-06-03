@@ -141,10 +141,10 @@ static esp_err_t static_file_handler(httpd_req_t *req) {
 
 /*####################################################################*/
 
-static esp_err_t led_handler(httpd_req_t *req) {
+static esp_err_t car_handler(httpd_req_t *req) {
     myServer *server = (myServer *)req->user_ctx;
     char buffer[MAX_REQ_LEN];
-    int received_state;
+    int received_move;
     bool data_valid = false;
 
     if (req->content_len > 0) {
@@ -152,106 +152,20 @@ static esp_err_t led_handler(httpd_req_t *req) {
             return httpd_resp_send_500(req);
         }
 
-        data_valid = extract_data_from_json(buffer, "state", JSON_TYPE_INT, &received_state, sizeof(int));
+        data_valid = extract_data_from_json(buffer, "move", JSON_TYPE_INT, &received_move, sizeof(int));
         if (!data_valid) {
             ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
         }
     }
 
-    int led_state = 0;
-    bool ok = messenger_send_with_response(
+    messenger_send_int(
         server->messenger,
-        MESSAGE_LED,
-        (data_valid) ? received_state : -1,
-        &led_state,
-        sizeof(led_state)
+        MESSAGE_CAR_MOVE,
+        received_move
     );
 
-    if (ok) {
-        char *json = create_json("state", JSON_TYPE_INT, led_state, NULL);
-        return send_json_response(req, json);
-    } else {
-        return httpd_resp_send_500(req);
-    }
-}
-
-static esp_err_t ledGet_handler(httpd_req_t *req) {
-    myServer *server = (myServer *)req->user_ctx;
-
-    int led_state = 0;
-    bool ok = messenger_send_with_response_generic(
-        server->messenger,
-        MESSAGE_LED,
-        NULL,
-        &led_state,
-        sizeof(led_state)
-    );
-
-    if (ok) {
-        char *json = create_json("state", JSON_TYPE_INT, led_state, NULL);
-        return send_json_response(req, json);
-    } else {
-        return httpd_resp_send_500(req);
-    }
-}
-
-static esp_err_t dht11_handler(httpd_req_t *req) {
-    myServer* server = (myServer* ) req->user_ctx;
-
-    dht_data_t dht_data;
-
-    bool ok = messenger_send_with_response_generic(
-        server->messenger,
-        MESSAGE_DHT,
-        NULL,
-        &dht_data,
-        sizeof(dht_data_t)
-    );
-
-    if (ok) {
-        char* json = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature, 
-                                 "humidity", JSON_TYPE_FLOAT, dht_data.humidity, 
-                                 NULL);
-        return send_json_response(req, json);
-    } else {
-        return httpd_resp_send_500(req);
-    }
-}
-
-static esp_err_t blink_handler(httpd_req_t *req) {
-    myServer* server = (myServer* ) req->user_ctx;
-    char buffer[MAX_REQ_LEN];
-    int receivedFreq;
-    bool data_valid = false;
-
-    if (req->content_len > 0) {
-        if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
-            return httpd_resp_send_500(req);
-        }
-
-        data_valid = extract_data_from_json(buffer, "frequency", JSON_TYPE_INT, &receivedFreq, sizeof(int));
-        if (!data_valid) {
-            ESP_LOGE(TAG, "Invalid or missing 'frequency' in JSON");
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'frequency'");
-        }
-    }
-
-    int blink_state = 0;
-    bool ok = messenger_send_with_response(
-        server->messenger,
-        MESSAGE_BLINK,
-        (data_valid) ? receivedFreq : -1,
-        &blink_state,
-        sizeof(blink_state)
-    );
-
-    if (ok) {
-        char *json = create_json("state", JSON_TYPE_INT, blink_state, NULL);
-        return send_json_response(req, json);
-    } else {
-        return httpd_resp_send_500(req);
-    }
+    return httpd_resp_send(req, NULL, 0);
 }
 
 static esp_err_t mqtt_tasks_handler(httpd_req_t* req) {
@@ -341,10 +255,7 @@ static static_route_t static_routes[] = {
 };
 
 static api_route_t api_routes[] = {
-    { "/ledSet",                HTTP_POST, led_handler },
-    { "/ledGet",                HTTP_POST, ledGet_handler },
-    { "/dht11",                 HTTP_POST, dht11_handler },
-    { "/blink",                 HTTP_POST, blink_handler },
+    { "/carMove",               HTTP_POST, car_handler },
     { "/mqtt_task_control",     HTTP_POST, mqtt_task_control_handler },
     { "/mqtt_tasks",            HTTP_POST, mqtt_tasks_handler }
 };
