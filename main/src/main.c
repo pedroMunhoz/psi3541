@@ -2,19 +2,21 @@
 
 #include "nvs_flash.h"
 
-#include "connect_wifi.h"
+// #include "connect_wifi.h"
 #include "Messenger.h"
-#include "filesystem.h"
-#include "server.h"
+// #include "filesystem.h"
+// #include "server.h"
 // #include "mqtt.h"
 #include "car.h"
+
+#define TIME_TO_TEST 2000
 
 static const char *TAG = "main";
 
 typedef struct {
     Messenger messenger;
-    Filesystem fs;
-    myServer server;
+    // Filesystem fs;
+    // myServer server;
     // Mqtt mqtt;
     Car car;
 } System;
@@ -22,34 +24,90 @@ typedef struct {
 static System sys;
 
 void testCar() {
-    motor_setDirection(&sys.car.motorR, MOTOR_HORARIO);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    messenger_message_t message = {
+        .type = MESSAGE_CAR_MOVE
+    };
+    Action acao;
 
-    motor_setDirection(&sys.car.motorR, MOTOR_ANTIHORARIO);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    for (int i=40; i<=100; i+= 10) {
+        printf("########################################\n\tTESTANDO PARA POT: %d%%\n########################################\n", i);
+        
+        printf("Frente: \n");
+        acao.move = FRENTE;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
 
-    motor_setDirection(&sys.car.motorR, MOTOR_PARADO);
-    motor_setDirection(&sys.car.motorL, MOTOR_HORARIO);
-    vTaskDelay(pdMS_TO_TICKS(5000));
 
-    motor_setDirection(&sys.car.motorL, MOTOR_ANTIHORARIO);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+        printf("Tras: \n");
+        acao.move = TRAS;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
 
-    motor_setDirection(&sys.car.motorL, MOTOR_PARADO);
-    car_move(&sys.car, FRENTE);
-    vTaskDelay(pdMS_TO_TICKS(5000));
 
-    car_move(&sys.car, TRAS);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+        printf("Rotacao esquerda: \n");
+        acao.move = ROT_ESQUERDA;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
 
-    car_move(&sys.car, ROT_ESQUERDA);
-    vTaskDelay(pdMS_TO_TICKS(5000));
 
-    car_move(&sys.car, ROT_DIREITA);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+        printf("Rotacao direita: \n");
+        acao.move = ROT_DIREITA;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
 
-    car_move(&sys.car, PARAR);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+
+        printf("Esquerda: \n");
+        acao.move = ESQUERDA;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
+
+
+        printf("Direita: \n");
+        acao.move = DIREITA;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
+
+
+        printf("Parar: \n");
+        acao.move = PARAR;
+        acao.pot = i;
+        
+        message.data = (void*)&acao;
+        messenger_send_message(&sys.messenger, &message);
+        
+        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+        printf("OK\n");
+    }
 
     vTaskDelete(NULL);
 }
@@ -67,17 +125,17 @@ void app_main() {
     messenger_init(&sys.messenger);  
 
     // Initilize project modules
-    car_init(&sys.car, CAR_IN_1, CAR_IN_2, CAR_IN_4, CAR_IN_3, 2, 4);
+    car_init(&sys.car, PIN_CAR_IN1, PIN_CAR_IN2, PIN_CAR_IN3, PIN_CAR_IN4, PIN_CAR_EN_A, PIN_CAR_EN_B);
     car_setMessenger(&sys.car, &sys.messenger);
 
-    filesystem_start(&sys.fs);
-    connect_wifi();
+    // filesystem_start(&sys.fs);
+    // connect_wifi();
 
     xTaskCreate(testCar, "test_car", 2048, NULL, 5, NULL);
 
-    if (wifi_connect_status) {
-        server_setMessenger(&sys.server, &sys.messenger);
-        server_init(&sys.server);
+    // if (wifi_connect_status) {
+    //     server_setMessenger(&sys.server, &sys.messenger);
+    //     server_init(&sys.server);
 
         // mqtt_init(&sys.mqtt);
         // mqtt_setMessenger(&sys.mqtt, &sys.messenger);
@@ -85,5 +143,5 @@ void app_main() {
         // int idx = 0;
         // messenger_message_t msg = {.type = MESSAGE_MQTT_START, .data = &idx, .response_queue = NULL};
         // messenger_send_message(&sys.messenger, &msg);
-    }
+    // }
 }

@@ -7,10 +7,19 @@
 #include <stdbool.h>
 #include "esp_log.h"
 
-#define CAR_IN_1 12
-#define CAR_IN_2 14
-#define CAR_IN_3 27
-#define CAR_IN_4 26
+#define PIN_CAR_IN1 15
+#define PIN_CAR_IN2 2
+#define PIN_CAR_IN3 4
+#define PIN_CAR_IN4 16
+#define PIN_CAR_EN_A 17
+#define PIN_CAR_EN_B 5
+
+#define PIN_ENCODER_R 18
+#define PIN_ENCODER_L 19
+
+#define PIN_MPU_SCL 22
+#define PIN_MPU_SDA 21
+#define PIN_MPU_INT 23
 
 #define MQTT_MAX_PUB_TASKS 4
 
