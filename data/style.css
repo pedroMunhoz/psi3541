@@ -36,24 +36,9 @@ h1, h3 {
     color: white;
     padding: 16px 40px;
     text-decoration: none;
-    font-size: 1.5rem;
-    margin: 4px;
+    font-size: 20px;
+    margin: 5px;
     cursor: pointer;
-}
-
-.button:active, .button.pressed {
-    background-color: #7a0000; /* darker red for pressed state */
-    box-shadow: 0 2px 8px #333 inset;
-    transition: background 0.1s;
-}
-
-.button.button-red:active, .button.button-red.pressed {
-    background-color: #a00000;
-}
-
-.button i {
-    font-size: 1.5em;
-    pointer-events: none;
 }
 
 .button2 {

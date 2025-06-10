@@ -2,115 +2,26 @@
 
 #include "nvs_flash.h"
 
-// #include "connect_wifi.h"
+#include "connect_wifi.h"
 #include "Messenger.h"
-// #include "filesystem.h"
-// #include "server.h"
-// #include "mqtt.h"
-#include "car.h"
-
-#define TIME_TO_TEST 2000
+#include "filesystem.h"
+#include "server.h"
+#include "mqtt.h"
+#include "my_led.h"
+#include "my_dht.h"
 
 static const char *TAG = "main";
 
 typedef struct {
     Messenger messenger;
-    // Filesystem fs;
-    // myServer server;
-    // Mqtt mqtt;
-    Car car;
+    myDHT dht;
+    myLED led;
+    Filesystem fs;
+    myServer server;
+    Mqtt mqtt;
 } System;
 
 static System sys;
-
-void testCar() {
-    messenger_message_t message = {
-        .type = MESSAGE_CAR_MOVE
-    };
-    Action acao;
-
-    for (int i=40; i<=100; i+= 10) {
-        printf("########################################\n\tTESTANDO PARA POT: %d%%\n########################################\n", i);
-        
-        printf("Frente: \n");
-        acao.move = FRENTE;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-
-
-        printf("Tras: \n");
-        acao.move = TRAS;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-
-
-        printf("Rotacao esquerda: \n");
-        acao.move = ROT_ESQUERDA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-
-
-        printf("Rotacao direita: \n");
-        acao.move = ROT_DIREITA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-
-
-        printf("Esquerda: \n");
-        acao.move = ESQUERDA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-
-
-        printf("Direita: \n");
-        acao.move = DIREITA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-
-
-        printf("Parar: \n");
-        acao.move = PARAR;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
-    }
-
-    vTaskDelete(NULL);
-}
 
 void app_main() {
     // Initialize NVS
@@ -125,23 +36,23 @@ void app_main() {
     messenger_init(&sys.messenger);  
 
     // Initilize project modules
-    car_init(&sys.car, PIN_CAR_IN1, PIN_CAR_IN2, PIN_CAR_IN3, PIN_CAR_IN4, PIN_CAR_EN_A, PIN_CAR_EN_B);
-    car_setMessenger(&sys.car, &sys.messenger);
+    dht_init(&sys.dht, DHT_PIN, DHT_TYPE_DHT11);
+    dht_setMessenger(&sys.dht, &sys.messenger);
 
-    // filesystem_start(&sys.fs);
-    // connect_wifi();
+    led_init(&sys.led, LED_PIN);
+    led_setMessenger(&sys.led, &sys.messenger);
 
-    xTaskCreate(testCar, "test_car", 2048, NULL, 5, NULL);
+    filesystem_start(&sys.fs);
+    connect_wifi();
 
-    // if (wifi_connect_status) {
-    //     server_setMessenger(&sys.server, &sys.messenger);
-    //     server_init(&sys.server);
+    if (wifi_connect_status) {
+        server_setMessenger(&sys.server, &sys.messenger);
+        server_init(&sys.server);
 
-        // mqtt_init(&sys.mqtt);
-        // mqtt_setMessenger(&sys.mqtt, &sys.messenger);
-        
-        // int idx = 0;
-        // messenger_message_t msg = {.type = MESSAGE_MQTT_START, .data = &idx, .response_queue = NULL};
-        // messenger_send_message(&sys.messenger, &msg);
-    // }
+        mqtt_init(&sys.mqtt);
+        mqtt_setMessenger(&sys.mqtt, &sys.messenger);
+        int idx = 0;
+        messenger_message_t msg = {.type = MESSAGE_MQTT_START, .data = &idx, .response_queue = NULL};
+        messenger_send_message(&sys.messenger, &msg);
+    }
 }

@@ -136,15 +136,3 @@ bool messenger_send_with_response(Messenger *messenger, messenger_message_type_t
     vQueueDelete(response_queue);
     return success;
 }
-
-void messenger_getInt_from_message_data(messenger_message_t* message, int* dest) {
-    memcpy(dest, message->data, sizeof(int));
-}
-
-void messenger_getInt_from_message_intdata(messenger_message_t* message, int* dest) {
-    memcpy(dest, &message->int_data, sizeof(int));
-}
-
-void messenger_getStruct_from_message_data(messenger_message_t* message, void* dest, size_t dest_size) {
-    memcpy(dest, message->data, dest_size);
-}
