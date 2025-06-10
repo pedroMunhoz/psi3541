@@ -95,76 +95,33 @@ static bool mqtt_extract_data_from_json(const char *json_str, const char *key, j
 
 /*###############################################################*/
 
-static esp_err_t mqtt_led_handler(Mqtt *mqtt, const char *payload, int payload_len) {
-    int received_state;
-    bool data_valid = mqtt_extract_data_from_json(payload, "state", JSON_TYPE_INT, &received_state);
 
-    int led_state = 0;
-    bool ok = messenger_send_with_response_generic(
-        mqtt->messenger,
-        MESSAGE_LED,
-        data_valid ? &received_state : NULL,
-        &led_state,
-        sizeof(led_state)
-    );
+// static esp_err_t mqtt_dht11_handler(Mqtt *mqtt, const char *payload, int payload_len) {
+//     dht_data_t dht_data;
+//     bool ok = messenger_send_with_response_generic(
+//         mqtt->messenger,
+//         MESSAGE_DHT,
+//         NULL,
+//         &dht_data,
+//         sizeof(dht_data_t)
+//     );
 
-    if (ok) {
-        char *json = create_json("state", JSON_TYPE_INT, led_state, NULL);
-        esp_mqtt_client_publish(mqtt->client, "/topic/led/response", json, 0, 0, 0);
-        free(json);
-        return ESP_OK;
-    }
-    return ESP_FAIL;
-}
-
-static esp_err_t mqtt_blink_handler(Mqtt *mqtt, const char *payload, int payload_len) {
-    int receivedFreq;
-    bool data_valid = mqtt_extract_data_from_json(payload, "frequency", JSON_TYPE_INT, &receivedFreq);
-
-    int blink_state = 0;
-    bool ok = messenger_send_with_response_generic(
-        mqtt->messenger,
-        MESSAGE_BLINK,
-        data_valid ? &receivedFreq : NULL,
-        &blink_state,
-        sizeof(blink_state)
-    );
-
-    if (ok) {
-        char *json = create_json("state", JSON_TYPE_INT, blink_state, NULL);
-        esp_mqtt_client_publish(mqtt->client, "/topic/blink/response", json, 0, 0, 0);
-        free(json);
-        return ESP_OK;
-    }
-    return ESP_FAIL;
-}
-
-static esp_err_t mqtt_dht11_handler(Mqtt *mqtt, const char *payload, int payload_len) {
-    dht_data_t dht_data;
-    bool ok = messenger_send_with_response_generic(
-        mqtt->messenger,
-        MESSAGE_DHT,
-        NULL,
-        &dht_data,
-        sizeof(dht_data_t)
-    );
-
-    if (ok) {
-        char *json = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature,
-                                 "humidity", JSON_TYPE_FLOAT, dht_data.humidity, NULL);
-        esp_mqtt_client_publish(mqtt->client, "/topic/dht11/response", json, 0, 0, 0);
-        free(json);
-        return ESP_OK;
-    }
-    return ESP_FAIL;
-}
+//     if (ok) {
+//         char *json = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature,
+//                                  "humidity", JSON_TYPE_FLOAT, dht_data.humidity, NULL);
+//         esp_mqtt_client_publish(mqtt->client, "/topic/dht11/response", json, 0, 0, 0);
+//         free(json);
+//         return ESP_OK;
+//     }
+//     return ESP_FAIL;
+// }
 
 /*###############################################################*/
 
 static mqtt_api_route_t mqtt_api_routes[] = {
-    { "/topic/led",    mqtt_led_handler },
-    { "/topic/blink",  mqtt_blink_handler },
-    { "/topic/dht11",  mqtt_dht11_handler }
+    // { "/topic/led",    mqtt_led_handler },
+    // { "/topic/blink",  mqtt_blink_handler },
+    // { "/topic/dht11",  mqtt_dht11_handler }
 };
 
 /*###############################################################*/
@@ -212,19 +169,19 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 // Example publish task for DHT11
 static void task_publish_dht11(void *arg) {
-    Mqtt *mqtt = (Mqtt *)arg;
-    dht_data_t dht_data;
-    while (1) {
-        bool ok = messenger_send_with_response_generic(
-            mqtt->messenger, MESSAGE_DHT, NULL, &dht_data, sizeof(dht_data_t));
-        if (ok) {
-            char *json_str = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature,
-                                         "humidity", JSON_TYPE_FLOAT, dht_data.humidity, NULL);
-            esp_mqtt_client_publish(mqtt->client, "/topic/dht11", json_str, 0, 0, 0);
-            if (json_str) free(json_str);
-        }
+    // Mqtt *mqtt = (Mqtt *)arg;
+    // dht_data_t dht_data;
+    // while (1) {
+    //     bool ok = messenger_send_with_response_generic(
+    //         mqtt->messenger, MESSAGE_DHT, NULL, &dht_data, sizeof(dht_data_t));
+    //     if (ok) {
+    //         char *json_str = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature,
+    //                                      "humidity", JSON_TYPE_FLOAT, dht_data.humidity, NULL);
+    //         esp_mqtt_client_publish(mqtt->client, "/topic/dht11", json_str, 0, 0, 0);
+    //         if (json_str) free(json_str);
+    //     }
         vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
+    // }
 }
 
 // Add more publish tasks as needed, e.g. task_publish_led, etc.

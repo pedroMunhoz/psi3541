@@ -39,5 +39,8 @@ bool messenger_send_with_response_generic(Messenger *messenger, messenger_messag
 void messenger_send_generic(Messenger *messenger, messenger_message_type_t type, void *data);
 void messenger_send_int(Messenger *messenger, messenger_message_type_t type, int int_data);
 bool messenger_send_with_response(Messenger *messenger, messenger_message_type_t type, int int_data, void *response_out, size_t response_size);
+void messenger_getStruct_from_message_data(messenger_message_t* message, void* dest, size_t dest_size);
+void messenger_getInt_from_message_intdata(messenger_message_t* message, int* dest);
+void messenger_getInt_from_message_data(messenger_message_t* message, int* dest);
 
 #endif // MESSENGER_H
