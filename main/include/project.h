@@ -7,29 +7,19 @@
 #include <stdbool.h>
 #include "esp_log.h"
 
-#define PIN_CAR_IN1 15
-#define PIN_CAR_IN2 2
-#define PIN_CAR_IN3 4
-#define PIN_CAR_IN4 16
-#define PIN_CAR_EN_A 17
-#define PIN_CAR_EN_B 5
-
-#define PIN_ENCODER_R 18
-#define PIN_ENCODER_L 19
-
-#define PIN_MPU_SCL 22
-#define PIN_MPU_SDA 21
-#define PIN_MPU_INT 23
+#define LED_PIN 2
+#define DHT_PIN 4
 
 #define MQTT_MAX_PUB_TASKS 4
 
-typedef int Pin;
-
 typedef enum {
+    MESSAGE_LED,
+    MESSAGE_LED_CHANGED,
+    MESSAGE_DHT,
+    MESSAGE_BLINK,
     MESSAGE_MQTT_START,
     MESSAGE_MQTT_STOP,
     MESSAGE_MQTT_STATUS,
-    MESSAGE_CAR_MOVE,
     MESSAGE_UNKNOWN
 } messenger_message_type_t;
 
