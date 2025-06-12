@@ -16,7 +16,7 @@ typedef struct {
 } Encoder;
 
 void encoder_init(Encoder* encoder, int in);
-int encoder_getPulses(Encoder* encoder);
+int encoder_getCount(Encoder* encoder);
 float encoder_getSpeed(Encoder* encoder);
 float encoder_getAngular(Encoder* encoder);
 

@@ -57,7 +57,7 @@ void encoder_update_task(void* parameter) {
     }
 }
 
-inline int encoder_getPulses(Encoder* encoder) {
+inline int encoder_getCount(Encoder* encoder) {
     return encoder->count;
 }
 

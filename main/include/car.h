@@ -6,6 +6,22 @@
 #include "encoder.h"
 
 #define PWM_FREQ 1000
+#define KP 1
+
+typedef enum {
+    STATE_FRENTE,
+    STATE_TRAS,
+    STATE_ESQ,
+    STATE_DIR,
+    STATE_ROT_ESQ,
+    STATE_ROT_DIR,
+    STATE_STOP
+} CarState;
+
+typedef struct {
+    CarState state;
+    int ref;
+} Action;
 
 typedef enum {
     LEFT,
@@ -53,20 +69,20 @@ typedef enum {
 } Move;
 
 typedef struct {
-    Move move;
-    int pot;
-} Action;
-
-typedef struct {
     Motor motorR;
     Motor motorL;
+
+    CarState state;
+    int ref;
+    int cur;
+    bool done;
 
     Messenger* messenger;
 } Car;
 
 void car_init(Car* car, Pin in1, Pin in2, Pin in3, Pin in4, Pin enA, Pin enB);
 void car_setMessenger(Car* car, Messenger* messenger);
-void car_move(Car* car, Action acao);
+void car_move(Car* car, Action state);
 void motor_setDirection(Motor *motor, motor_sentido_t sentido);
 
 #endif

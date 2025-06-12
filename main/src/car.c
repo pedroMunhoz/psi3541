@@ -29,7 +29,7 @@ static void motor_update_task(void *param) {
             mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0);            
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10)); // Update every 20ms
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -98,53 +98,96 @@ static void motor_setPot(Motor *motor, int pot) {
     motor->pot = pot;
 }
 
-void car_move(Car* car, Action acao) {
+void car_move(Car* car, Action action) {
+    car->ref = action.ref;
+    car->done = false;
 
-    switch (acao.move) {
+    switch (action.state) {
     case FRENTE:
-        motor_setDirection(&car->motorR, MOTOR_HORARIO);
-        motor_setDirection(&car->motorL, MOTOR_ANTIHORARIO);
-        motor_setPot(&car->motorR, acao.pot);
-        motor_setPot(&car->motorL, acao.pot);
+        car->state=STATE_FRENTE;
         break;
     case TRAS:
-        motor_setDirection(&car->motorR, MOTOR_ANTIHORARIO);
-        motor_setDirection(&car->motorL, MOTOR_HORARIO);
-        motor_setPot(&car->motorR, acao.pot);
-        motor_setPot(&car->motorL, acao.pot);
+        car->state=STATE_TRAS;
         break;
     case ROT_ESQUERDA:
-        motor_setDirection(&car->motorR, MOTOR_HORARIO);
-        motor_setDirection(&car->motorL, MOTOR_HORARIO);
-        motor_setPot(&car->motorR, acao.pot);
-        motor_setPot(&car->motorL, acao.pot);
+        car->state=STATE_ROT_ESQ;
         break;
     case ROT_DIREITA:
-        motor_setDirection(&car->motorR, MOTOR_ANTIHORARIO);
-        motor_setDirection(&car->motorL, MOTOR_ANTIHORARIO);
-        motor_setPot(&car->motorR, acao.pot);
-        motor_setPot(&car->motorL, acao.pot);
+        car->state=STATE_ROT_DIR;
         break;
     case ESQUERDA:
-        motor_setDirection(&car->motorR, MOTOR_HORARIO);
-        motor_setDirection(&car->motorL, MOTOR_ANTIHORARIO);
-        motor_setPot(&car->motorR, acao.pot);
-        motor_setPot(&car->motorL, acao.pot*75/100);
+        car->state=STATE_ESQ;
         break;
     case DIREITA:
-        motor_setDirection(&car->motorR, MOTOR_HORARIO);
-        motor_setDirection(&car->motorL, MOTOR_ANTIHORARIO);
-        motor_setPot(&car->motorR, acao.pot*75/100);
-        motor_setPot(&car->motorL, acao.pot);
+        car->state=STATE_DIR;
         break;
     case PARAR:
-        motor_setDirection(&car->motorR, MOTOR_PARADO);
-        motor_setDirection(&car->motorL, MOTOR_PARADO);
-        motor_setPot(&car->motorR, acao.pot);
-        motor_setPot(&car->motorL, acao.pot);
+        car->state=STATE_STOP;
         break;
     default:
         break;
+    }
+}
+
+void carControl(void* param) {
+    Car* car = (Car*) param;
+    int e;
+    while(1) {
+        switch (car->state) {
+        case STATE_FRENTE:
+            e = encoder_getCount(&car->motorR.encoder) - encoder_getCount(&car->motorL.encoder);
+
+            car->cur += (encoder_getSpeed(&car->motorL.encoder) + encoder_getSpeed(&car->motorR.encoder)) /2;
+            if (car->cur > car->ref) {
+                car->state = STATE_STOP;
+                car->cur = 0;
+                car->ref = 0;
+                car->done = true;
+            }
+            
+            motor_setDirection(&car->motorR, MOTOR_HORARIO);
+            motor_setDirection(&car->motorL, MOTOR_ANTIHORARIO);
+            motor_setPot(&car->motorR, motor_getPot(&car->motorR) - e*KP/2);
+            motor_setPot(&car->motorL, motor_getPot(&car->motorL) + e*KP/2);
+            wifi_debug_printf("Car moved front - %d\n", car->cur);
+            break;
+
+        case STATE_TRAS:
+            e = encoder_getCount(&car->motorR.encoder) - encoder_getCount(&car->motorL.encoder);
+
+            car->cur += (encoder_getSpeed(&car->motorL.encoder) + encoder_getSpeed(&car->motorR.encoder)) /2;
+            if (car->cur > car->ref) {
+                car->state = STATE_STOP;
+                car->cur = 0;
+                car->ref = 0;
+                car->done = true;
+            }
+            
+            motor_setDirection(&car->motorR, MOTOR_ANTIHORARIO);
+            motor_setDirection(&car->motorL, MOTOR_HORARIO);
+            motor_setPot(&car->motorR, motor_getPot(&car->motorR) - e*KP/2);
+            motor_setPot(&car->motorL, motor_getPot(&car->motorL) + e*KP/2);
+            wifi_debug_printf("Car moved back - %d\n", car->cur);
+            break;
+
+        case STATE_STOP:
+            e = encoder_getCount(&car->motorR.encoder) - encoder_getCount(&car->motorL.encoder);
+
+            car->cur += (encoder_getSpeed(&car->motorL.encoder) + encoder_getSpeed(&car->motorR.encoder)) /2;
+            if (car->cur > car->ref) {
+                car->state = STATE_STOP;
+                car->cur = 0;
+                car->ref = 0;
+            }
+            
+            motor_setDirection(&car->motorR, MOTOR_PARADO);
+            motor_setDirection(&car->motorL, MOTOR_PARADO);
+            break;
+        
+        default:
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -154,7 +197,7 @@ static void handleAction(messenger_message_t *message, void *context) {
     Action action;
     messenger_getStruct_from_message_data(message, &action, sizeof(Action));
 
-    wifi_debug_printf("Chamou acao com - move: %d | pot: %d\n", action.move, action.pot);
+    wifi_debug_printf("Chamou acao com - state: %d, ref: %d\n", action.state, action.ref);
 
     car_move(car, action);
 }
@@ -162,6 +205,12 @@ static void handleAction(messenger_message_t *message, void *context) {
 void car_init(Car* car, Pin in1, Pin in2, Pin in3, Pin in4, Pin enA, Pin enB) {
     motor_init(&(car->motorR), in1, in2, enA, RIGHT);
     motor_init(&(car->motorL), in3, in4, enB, LEFT);
+
+    car->cur = 0;
+    car->done = false;
+    car->ref = 0;
+
+    xTaskCreate(carControl, "car_control_task", 4096, car, 15, NULL);
 }
 
 void car_setMessenger(Car* car, Messenger* messenger) {

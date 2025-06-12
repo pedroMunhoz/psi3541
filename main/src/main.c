@@ -24,89 +24,20 @@ typedef struct {
 static System sys;
 
 void testCar() {
+    Action action = {.state=STATE_FRENTE, .ref=100};
     messenger_message_t message = {
         .type = MESSAGE_CAR_MOVE
     };
-    Action acao;
+    message.data = (void*)&action;
+    wifi_debug_printf("Frente: \n");     
+    messenger_send_message(&sys.messenger, &message);
 
-    for (int i=40; i<=100; i+= 10) {
-        wifi_debug_printf("########################################\n\tTESTANDO PARA POT: %d%%\n########################################\n", i);
-        
-        wifi_debug_printf("Frente: \n");
-        acao.move = FRENTE;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
+    while(!sys.car.done)
+        vTaskDelay(pdMS_TO_TICKS(100));
 
-
-        wifi_debug_printf("Tras: \n");
-        acao.move = TRAS;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        wifi_debug_printf("OK\n");
-
-
-        wifi_debug_printf("Rotacao esquerda: \n");
-        acao.move = ROT_ESQUERDA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        wifi_debug_printf("OK\n");
-
-
-        wifi_debug_printf("Rotacao direita: \n");
-        acao.move = ROT_DIREITA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        wifi_debug_printf("OK\n");
-
-
-        wifi_debug_printf("Esquerda: \n");
-        acao.move = ESQUERDA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        wifi_debug_printf("OK\n");
-
-
-        wifi_debug_printf("Direita: \n");
-        acao.move = DIREITA;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        wifi_debug_printf("OK\n");
-
-
-        wifi_debug_printf("Parar: \n");
-        acao.move = PARAR;
-        acao.pot = i;
-        
-        message.data = (void*)&acao;
-        messenger_send_message(&sys.messenger, &message);
-        
-        vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        wifi_debug_printf("OK\n");
-    }
+    action.state = STATE_TRAS;
+    wifi_debug_printf("Frente: \n");     
+    messenger_send_message(&sys.messenger, &message);
 
     vTaskDelete(NULL);
 }
@@ -134,6 +65,8 @@ void app_main() {
 
     if (wifi_connect_status) {
         wifi_debug_init();
+
+        testCar();
     //     server_setMessenger(&sys.server, &sys.messenger);
     //     server_init(&sys.server);
 
