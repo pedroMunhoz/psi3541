@@ -52,7 +52,6 @@ void encoder_update_task(void* parameter) {
     Encoder* encoder = (Encoder* ) parameter;
     while (true) {
         encoder->vel = 1000.0*(float)encoder->count/ENCODER_UPDATE_PERIOD_MS;
-        printf("\t\tENCODER COUNT: %d\n\t\tENCODER SPEED: %.2f\n", encoder->count, encoder_getSpeed(encoder));
         encoder->count = 0;
         vTaskDelay(pdMS_TO_TICKS(ENCODER_UPDATE_PERIOD_MS));
     }
