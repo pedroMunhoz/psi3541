@@ -23,6 +23,8 @@
 
 #define MQTT_MAX_PUB_TASKS 4
 
+#define NUM_ENCODERS 2
+
 typedef int Pin;
 
 typedef enum {

@@ -40,7 +40,6 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
 
 
         printf("Tras: \n");
@@ -127,6 +126,8 @@ void app_main() {
     // Initilize project modules
     car_init(&sys.car, PIN_CAR_IN1, PIN_CAR_IN2, PIN_CAR_IN3, PIN_CAR_IN4, PIN_CAR_EN_A, PIN_CAR_EN_B);
     car_setMessenger(&sys.car, &sys.messenger);
+    encoder_init(&sys.car.motorL.encoder, PIN_ENCODER_L);
+    encoder_init(&sys.car.motorR.encoder, PIN_ENCODER_R);
 
     // filesystem_start(&sys.fs);
     // connect_wifi();

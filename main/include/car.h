@@ -3,6 +3,7 @@
 
 #include "project.h"
 #include "Messenger.h"
+#include "encoder.h"
 
 #define PWM_FREQ 1000
 
@@ -26,6 +27,8 @@ typedef struct {
 
     motor_sentido_t sentido;
     int pot;
+
+    Encoder encoder;
 } Motor;
 
 typedef struct {

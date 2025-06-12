@@ -79,6 +79,8 @@ void motor_setDirection(Motor *motor, motor_sentido_t sentido) {
         printf("\tSetting motor %d parado\n", motor->lado);
     }
 
+    printf("\t\tMotor %d - speed: %.2f - OK\n", motor->lado, encoder_getSpeed(&motor->encoder));
+
     if (sentido == MOTOR_HORARIO || sentido == MOTOR_ANTIHORARIO || sentido == MOTOR_PARADO) {
         motor->sentido = sentido;
     }
