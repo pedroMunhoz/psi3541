@@ -2,7 +2,7 @@
 
 #include "nvs_flash.h"
 
-// #include "connect_wifi.h"
+#include "connect_wifi.h"
 #include "Messenger.h"
 // #include "filesystem.h"
 // #include "server.h"
@@ -30,9 +30,9 @@ void testCar() {
     Action acao;
 
     for (int i=40; i<=100; i+= 10) {
-        printf("########################################\n\tTESTANDO PARA POT: %d%%\n########################################\n", i);
+        wifi_debug_printf("########################################\n\tTESTANDO PARA POT: %d%%\n########################################\n", i);
         
-        printf("Frente: \n");
+        wifi_debug_printf("Frente: \n");
         acao.move = FRENTE;
         acao.pot = i;
         
@@ -42,7 +42,7 @@ void testCar() {
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
 
 
-        printf("Tras: \n");
+        wifi_debug_printf("Tras: \n");
         acao.move = TRAS;
         acao.pot = i;
         
@@ -50,10 +50,10 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
+        wifi_debug_printf("OK\n");
 
 
-        printf("Rotacao esquerda: \n");
+        wifi_debug_printf("Rotacao esquerda: \n");
         acao.move = ROT_ESQUERDA;
         acao.pot = i;
         
@@ -61,10 +61,10 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
+        wifi_debug_printf("OK\n");
 
 
-        printf("Rotacao direita: \n");
+        wifi_debug_printf("Rotacao direita: \n");
         acao.move = ROT_DIREITA;
         acao.pot = i;
         
@@ -72,10 +72,10 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
+        wifi_debug_printf("OK\n");
 
 
-        printf("Esquerda: \n");
+        wifi_debug_printf("Esquerda: \n");
         acao.move = ESQUERDA;
         acao.pot = i;
         
@@ -83,10 +83,10 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
+        wifi_debug_printf("OK\n");
 
 
-        printf("Direita: \n");
+        wifi_debug_printf("Direita: \n");
         acao.move = DIREITA;
         acao.pot = i;
         
@@ -94,10 +94,10 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
+        wifi_debug_printf("OK\n");
 
 
-        printf("Parar: \n");
+        wifi_debug_printf("Parar: \n");
         acao.move = PARAR;
         acao.pot = i;
         
@@ -105,7 +105,7 @@ void testCar() {
         messenger_send_message(&sys.messenger, &message);
         
         vTaskDelay(pdMS_TO_TICKS(TIME_TO_TEST));
-        printf("OK\n");
+        wifi_debug_printf("OK\n");
     }
 
     vTaskDelete(NULL);
@@ -130,11 +130,10 @@ void app_main() {
     encoder_init(&sys.car.motorR.encoder, PIN_ENCODER_R);
 
     // filesystem_start(&sys.fs);
-    // connect_wifi();
+    connect_wifi();
 
-    xTaskCreate(testCar, "test_car", 2048, NULL, 5, NULL);
-
-    // if (wifi_connect_status) {
+    if (wifi_connect_status) {
+        wifi_debug_init();
     //     server_setMessenger(&sys.server, &sys.messenger);
     //     server_init(&sys.server);
 
@@ -144,5 +143,8 @@ void app_main() {
         // int idx = 0;
         // messenger_message_t msg = {.type = MESSAGE_MQTT_START, .data = &idx, .response_queue = NULL};
         // messenger_send_message(&sys.messenger, &msg);
-    // }
+
+        wifi_debug_printf("Debug log: uptime = %lld ms\n", esp_timer_get_time() / 1000);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }

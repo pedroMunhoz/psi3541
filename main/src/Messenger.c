@@ -39,7 +39,7 @@ void messenger_init(Messenger* messenger) {
         return;
     }
 
-    xTaskCreate(messenger_task, "MessengerTask", 2048, messenger, 5, NULL);
+    xTaskCreate(messenger_task, "MessengerTask", 2048*4, messenger, 20, NULL);
     ESP_LOGI(TAG, "Messenger initialized.");
 }
 

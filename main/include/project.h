@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include "esp_log.h"
+#include "esp_timer.h"
+
+#include "wifiDebug.h"
 
 #define PIN_CAR_IN1 15
 #define PIN_CAR_IN2 2

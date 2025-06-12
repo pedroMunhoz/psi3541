@@ -72,14 +72,14 @@ static motor_sentido_t motor_getDirection(Motor *motor) {
 
 void motor_setDirection(Motor *motor, motor_sentido_t sentido) {
     if (sentido == MOTOR_HORARIO) {
-        printf("\tSetting motor %d in direction - HORARIO\n", motor->lado);
+        wifi_debug_printf("\tSetting motor %d in direction - HORARIO\n", motor->lado);
     } else if (sentido == MOTOR_ANTIHORARIO) {
-        printf("\tSetting motor %d in direction - ANTIHORARIO\n", motor->lado);
+        wifi_debug_printf("\tSetting motor %d in direction - ANTIHORARIO\n", motor->lado);
     } else {
-        printf("\tSetting motor %d parado\n", motor->lado);
+        wifi_debug_printf("\tSetting motor %d parado\n", motor->lado);
     }
 
-    printf("\t\tMotor %d - speed: %.2f - OK\n", motor->lado, encoder_getSpeed(&motor->encoder));
+    wifi_debug_printf("\t\tMotor %d - speed: %.2f - OK\n", motor->lado, encoder_getSpeed(&motor->encoder));
 
     if (sentido == MOTOR_HORARIO || sentido == MOTOR_ANTIHORARIO || sentido == MOTOR_PARADO) {
         motor->sentido = sentido;
@@ -94,7 +94,7 @@ static void motor_setPot(Motor *motor, int pot) {
     if (pot < 0) pot = 0;
     if (pot > 100) pot = 100;
 
-    printf("\tSetting pot of motor %d to %d%%\n", motor->lado, pot);
+    wifi_debug_printf("\tSetting pot of motor %d to %d%%\n", motor->lado, pot);
     motor->pot = pot;
 }
 
@@ -154,7 +154,7 @@ static void handleAction(messenger_message_t *message, void *context) {
     Action action;
     messenger_getStruct_from_message_data(message, &action, sizeof(Action));
 
-    printf("Chamou acao com - move: %d | pot: %d\n", action.move, action.pot);
+    wifi_debug_printf("Chamou acao com - move: %d | pot: %d\n", action.move, action.pot);
 
     car_move(car, action);
 }
