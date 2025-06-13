@@ -12,11 +12,14 @@ typedef struct {
     Pin pin;
 
     volatile int count;
+    int totalCount;
     float vel;
 } Encoder;
 
 void encoder_init(Encoder* encoder, int in);
 int encoder_getCount(Encoder* encoder);
+int encoder_getTotalCount(Encoder* encoder);
+void encoder_resetTotalCount(Encoder* encoder);
 float encoder_getSpeed(Encoder* encoder);
 float encoder_getAngular(Encoder* encoder);
 

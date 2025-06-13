@@ -1,7 +1,8 @@
 #include "Messenger.h"
 
-#define MESSENGER_MSG_TIMEOUT pdMS_TO_TICKS(2000)     // 2 seconds for message receive
-#define MESSENGER_RESP_TIMEOUT pdMS_TO_TICKS(2000)    // 2 seconds for response receive
+#define MESSENGER_SEND_TIMEOUT pdMS_TO_TICKS(100)
+#define MESSENGER_MSG_TIMEOUT  pdMS_TO_TICKS(2000)
+#define MESSENGER_RESP_TIMEOUT pdMS_TO_TICKS(2000)
 
 static const char *TAG = "Messenger";
 
@@ -39,12 +40,20 @@ void messenger_init(Messenger* messenger) {
         return;
     }
 
-    xTaskCreate(messenger_task, "MessengerTask", 2048*4, messenger, 20, NULL);
+    xTaskCreatePinnedToCore(
+        messenger_task,
+        "MessengerTask",
+        2048*4,
+        messenger,
+        25,
+        NULL,
+        1
+    );
     ESP_LOGI(TAG, "Messenger initialized.");
 }
 
 void messenger_send_message(Messenger* messenger, messenger_message_t *message) {
-    if (xQueueSend(messenger->msg_queue, message, MESSENGER_MSG_TIMEOUT) != pdPASS) {
+    if (xQueueSend(messenger->msg_queue, message, MESSENGER_SEND_TIMEOUT) != pdPASS) {
         ESP_LOGE(TAG, "Failed to send message to Messenger (timeout)");
     }
 }

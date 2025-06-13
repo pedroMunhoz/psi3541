@@ -52,6 +52,7 @@ void encoder_update_task(void* parameter) {
     Encoder* encoder = (Encoder* ) parameter;
     while (true) {
         encoder->vel = 1000.0*(float)encoder->count/ENCODER_UPDATE_PERIOD_MS;
+        encoder->totalCount += encoder->count;
         encoder->count = 0;
         vTaskDelay(pdMS_TO_TICKS(ENCODER_UPDATE_PERIOD_MS));
     }
@@ -59,6 +60,14 @@ void encoder_update_task(void* parameter) {
 
 inline int encoder_getCount(Encoder* encoder) {
     return encoder->count;
+}
+
+inline int encoder_getTotalCount(Encoder* encoder) {
+    return encoder->totalCount;
+}
+
+inline void encoder_resetTotalCount(Encoder* encoder) {
+    encoder->totalCount = 0;
 }
 
 // In cm/ms

@@ -4,8 +4,8 @@
 
 #include "connect_wifi.h"
 #include "Messenger.h"
-// #include "filesystem.h"
-// #include "server.h"
+#include "filesystem.h"
+#include "server.h"
 // #include "mqtt.h"
 #include "car.h"
 
@@ -15,8 +15,8 @@ static const char *TAG = "main";
 
 typedef struct {
     Messenger messenger;
-    // Filesystem fs;
-    // myServer server;
+    Filesystem fs;
+    myServer server;
     // Mqtt mqtt;
     Car car;
 } System;
@@ -60,15 +60,15 @@ void app_main() {
     encoder_init(&sys.car.motorL.encoder, PIN_ENCODER_L);
     encoder_init(&sys.car.motorR.encoder, PIN_ENCODER_R);
 
-    // filesystem_start(&sys.fs);
+    filesystem_start(&sys.fs);
     connect_wifi();
 
     if (wifi_connect_status) {
         wifi_debug_init();
 
         testCar();
-    //     server_setMessenger(&sys.server, &sys.messenger);
-    //     server_init(&sys.server);
+        server_setMessenger(&sys.server, &sys.messenger);
+        server_init(&sys.server);
 
         // mqtt_init(&sys.mqtt);
         // mqtt_setMessenger(&sys.mqtt, &sys.messenger);

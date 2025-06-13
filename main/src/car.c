@@ -99,26 +99,32 @@ static void motor_setPot(Motor *motor, int pot) {
 }
 
 void car_move(Car* car, Action action) {
-    car->ref = action.ref;
     car->done = false;
 
     switch (action.state) {
     case FRENTE:
+        car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
         car->state=STATE_FRENTE;
         break;
     case TRAS:
+        car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
         car->state=STATE_TRAS;
         break;
     case ROT_ESQUERDA:
+        car->ref = (W_CAR * action.ref * ENCODER_NUM_DIV) / (360.0 * D_CAR);
+        car->ref = 2 * PI * action.ref / ENCODER_NUM_DIV;
         car->state=STATE_ROT_ESQ;
         break;
     case ROT_DIREITA:
+        car->ref = (W_CAR * action.ref * ENCODER_NUM_DIV) / (360.0 * D_CAR);
         car->state=STATE_ROT_DIR;
         break;
     case ESQUERDA:
+        car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
         car->state=STATE_ESQ;
         break;
     case DIREITA:
+        car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
         car->state=STATE_DIR;
         break;
     case PARAR:
@@ -137,11 +143,13 @@ void carControl(void* param) {
         case STATE_FRENTE:
             e = encoder_getCount(&car->motorR.encoder) - encoder_getCount(&car->motorL.encoder);
 
-            car->cur += (encoder_getSpeed(&car->motorL.encoder) + encoder_getSpeed(&car->motorR.encoder)) /2;
+            car->cur = (encoder_getTotalCount(&car->motorL.encoder) + encoder_getTotalCount(&car->motorR.encoder)) /2;
             if (car->cur > car->ref) {
                 car->state = STATE_STOP;
                 car->cur = 0;
                 car->ref = 0;
+                encoder_resetTotalCount(&car->motorL.encoder);
+                encoder_resetTotalCount(&car->motorR.encoder);
                 car->done = true;
             }
             
@@ -155,11 +163,13 @@ void carControl(void* param) {
         case STATE_TRAS:
             e = encoder_getCount(&car->motorR.encoder) - encoder_getCount(&car->motorL.encoder);
 
-            car->cur += (encoder_getSpeed(&car->motorL.encoder) + encoder_getSpeed(&car->motorR.encoder)) /2;
+            car->cur = (encoder_getTotalCount(&car->motorL.encoder) + encoder_getTotalCount(&car->motorR.encoder)) /2;
             if (car->cur > car->ref) {
                 car->state = STATE_STOP;
                 car->cur = 0;
                 car->ref = 0;
+                encoder_resetTotalCount(&car->motorL.encoder);
+                encoder_resetTotalCount(&car->motorR.encoder);
                 car->done = true;
             }
             
@@ -170,16 +180,45 @@ void carControl(void* param) {
             wifi_debug_printf("Car moved back - %d\n", car->cur);
             break;
 
-        case STATE_STOP:
-            e = encoder_getCount(&car->motorR.encoder) - encoder_getCount(&car->motorL.encoder);
+        case STATE_ROT_ESQ:
+            car->cur = (encoder_getTotalCount(&car->motorL.encoder) + encoder_getTotalCount(&car->motorR.encoder)) / 2;
 
-            car->cur += (encoder_getSpeed(&car->motorL.encoder) + encoder_getSpeed(&car->motorR.encoder)) /2;
-            if (car->cur > car->ref) {
+            if (car->cur >= car->ref) {
                 car->state = STATE_STOP;
                 car->cur = 0;
                 car->ref = 0;
+                encoder_resetTotalCount(&car->motorL.encoder);
+                encoder_resetTotalCount(&car->motorR.encoder);
+                car->done = true;
             }
-            
+
+            motor_setDirection(&car->motorR, MOTOR_HORARIO);
+            motor_setDirection(&car->motorL, MOTOR_HORARIO);
+            motor_setPot(&car->motorR, 80);
+            motor_setPot(&car->motorL, 80);
+            wifi_debug_printf("Car rotated left - %d\n", car->cur);
+            break;
+
+        case STATE_ROT_DIR:
+            car->cur = (encoder_getTotalCount(&car->motorL.encoder) + encoder_getTotalCount(&car->motorR.encoder)) / 2;
+
+            if (car->cur >= car->ref) {
+                car->state = STATE_STOP;
+                car->cur = 0;
+                car->ref = 0;
+                encoder_resetTotalCount(&car->motorL.encoder);
+                encoder_resetTotalCount(&car->motorR.encoder);
+                car->done = true;
+            }
+
+            motor_setDirection(&car->motorR, MOTOR_ANTIHORARIO);
+            motor_setDirection(&car->motorL, MOTOR_ANTIHORARIO);
+            motor_setPot(&car->motorR, 80);
+            motor_setPot(&car->motorL, 80);
+            wifi_debug_printf("Car rotated right - %d\n", car->cur);
+            break;
+
+        case STATE_STOP:          
             motor_setDirection(&car->motorR, MOTOR_PARADO);
             motor_setDirection(&car->motorL, MOTOR_PARADO);
             break;
@@ -187,7 +226,7 @@ void carControl(void* param) {
         default:
             break;
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 

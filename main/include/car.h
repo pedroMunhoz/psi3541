@@ -8,6 +8,10 @@
 #define PWM_FREQ 1000
 #define KP 1
 
+#define PI 3.141592
+#define D_CAR 6.5
+#define W_CAR 13.5
+
 typedef enum {
     STATE_FRENTE,
     STATE_TRAS,
