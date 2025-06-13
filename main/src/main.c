@@ -67,8 +67,8 @@ void app_main() {
         wifi_debug_init();
 
         testCar();
-        server_setMessenger(&sys.server, &sys.messenger);
-        server_init(&sys.server);
+        // server_setMessenger(&sys.server, &sys.messenger);
+        // server_init(&sys.server);
 
         // mqtt_init(&sys.mqtt);
         // mqtt_setMessenger(&sys.mqtt, &sys.messenger);
