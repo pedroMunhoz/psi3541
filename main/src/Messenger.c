@@ -45,7 +45,7 @@ void messenger_init(Messenger* messenger) {
         "MessengerTask",
         2048*4,
         messenger,
-        25,
+        24,
         NULL,
         1
     );

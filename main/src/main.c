@@ -25,19 +25,32 @@ static System sys;
 
 void testCar() {
     Action action = {.state=STATE_FRENTE, .ref=100};
-    messenger_message_t message = {
-        .type = MESSAGE_CAR_MOVE
-    };
-    message.data = (void*)&action;
+    int received;
+    
     wifi_debug_printf("Frente: \n");     
-    messenger_send_message(&sys.messenger, &message);
-
+    messenger_send_with_response_generic(&sys.messenger, MESSAGE_CAR_MOVE, (void*)&action, &received, sizeof(int));
     while(!sys.car.done)
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(500));
 
+    wifi_debug_printf("Tras: \n");     
     action.state = STATE_TRAS;
-    wifi_debug_printf("Frente: \n");     
-    messenger_send_message(&sys.messenger, &message);
+    messenger_send_with_response_generic(&sys.messenger, MESSAGE_CAR_MOVE, (void*)&action, &received, sizeof(int));
+    while(!sys.car.done)
+        vTaskDelay(pdMS_TO_TICKS(500));
+    
+    wifi_debug_printf("Esq: \n");
+    action.state=STATE_ROT_DIR;
+    action.ref=90;
+    messenger_send_with_response_generic(&sys.messenger, MESSAGE_CAR_MOVE, (void*)&action, &received, sizeof(int));
+    while(!sys.car.done)
+        vTaskDelay(pdMS_TO_TICKS(500));
+    
+    wifi_debug_printf("Dir: \n");
+    action.state=STATE_ROT_ESQ;
+    action.ref=180;
+        messenger_send_with_response_generic(&sys.messenger, MESSAGE_CAR_MOVE, (void*)&action, &received, sizeof(int));
+    while(!sys.car.done)
+        vTaskDelay(pdMS_TO_TICKS(500));
 
     vTaskDelete(NULL);
 }
@@ -63,21 +76,11 @@ void app_main() {
     filesystem_start(&sys.fs);
     connect_wifi();
 
-    if (wifi_connect_status) {
-        wifi_debug_init();
+    while (!wifi_connect_status) {}
 
-        testCar();
-        // server_setMessenger(&sys.server, &sys.messenger);
-        // server_init(&sys.server);
-
-        // mqtt_init(&sys.mqtt);
-        // mqtt_setMessenger(&sys.mqtt, &sys.messenger);
-        
-        // int idx = 0;
-        // messenger_message_t msg = {.type = MESSAGE_MQTT_START, .data = &idx, .response_queue = NULL};
-        // messenger_send_message(&sys.messenger, &msg);
-
-        wifi_debug_printf("Debug log: uptime = %lld ms\n", esp_timer_get_time() / 1000);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+    server_init(&sys.server);
+    server_setMessenger(&sys.server, &sys.messenger);
+    
+    wifi_debug_init();
+    // testCar();
 }

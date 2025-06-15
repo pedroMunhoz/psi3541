@@ -6,26 +6,14 @@
 #include "encoder.h"
 
 #define PWM_FREQ 1000
-#define KP 1
+
+#define KP_DIR 2.0
+#define KP_DIR_TOTAL 10.0
+#define KD_DIR 0.4
 
 #define PI 3.141592
 #define D_CAR 6.5
 #define W_CAR 13.5
-
-typedef enum {
-    STATE_FRENTE,
-    STATE_TRAS,
-    STATE_ESQ,
-    STATE_DIR,
-    STATE_ROT_ESQ,
-    STATE_ROT_DIR,
-    STATE_STOP
-} CarState;
-
-typedef struct {
-    CarState state;
-    int ref;
-} Action;
 
 typedef enum {
     LEFT,
@@ -61,16 +49,6 @@ typedef struct {
     Vec3_int_t acc;
     Vec3_int_t gyr;
 } Mpu;
-
-typedef enum {
-    FRENTE,
-    TRAS,
-    ESQUERDA,
-    DIREITA,
-    ROT_ESQUERDA,
-    ROT_DIREITA,
-    PARAR
-} Move;
 
 typedef struct {
     Motor motorR;

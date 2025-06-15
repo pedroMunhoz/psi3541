@@ -1,7 +1,5 @@
 #include "encoder.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "driver/gpio.h"
 
 Encoder* encoder_registry[NUM_ENCODERS];
@@ -30,7 +28,7 @@ bool encoder_register(Encoder* encoder) {
             gpio_reset_pin(encoder->pin);
             gpio_set_direction(encoder->pin, GPIO_MODE_INPUT);
             encoder->count = 0;
-            gpio_set_intr_type(encoder->pin, GPIO_INTR_POSEDGE); // or GPIO_INTR_ANYEDGE
+            gpio_set_intr_type(encoder->pin, GPIO_INTR_ANYEDGE);
             gpio_isr_handler_add(encoder->pin, encoder_ISR_handler, (void*)encoder->pin);
             return true;
         }
@@ -48,36 +46,17 @@ void encoder_unregister(Encoder* encoder) {
     }
 }
 
-void encoder_update_task(void* parameter) {
-    Encoder* encoder = (Encoder* ) parameter;
-    while (true) {
-        encoder->vel = 1000.0*(float)encoder->count/ENCODER_UPDATE_PERIOD_MS;
-        encoder->totalCount += encoder->count;
-        encoder->count = 0;
-        vTaskDelay(pdMS_TO_TICKS(ENCODER_UPDATE_PERIOD_MS));
-    }
+int encoder_getCount(Encoder* encoder) {
+    portENTER_CRITICAL(encoder->mux);
+    int count = encoder->count;
+    portEXIT_CRITICAL(encoder->mux);
+    return count;
 }
 
-inline int encoder_getCount(Encoder* encoder) {
-    return encoder->count;
-}
-
-inline int encoder_getTotalCount(Encoder* encoder) {
-    return encoder->totalCount;
-}
-
-inline void encoder_resetTotalCount(Encoder* encoder) {
-    encoder->totalCount = 0;
-}
-
-// In cm/ms
-inline float encoder_getSpeed(Encoder* encoder) {
-    return (ENCODER_WHEEL_TWO_PI_R/ENCODER_NUM_DIV) * encoder->vel;
-}
-
-// In rad/ms
-inline float encoder_getAngular(Encoder* encoder) {
-    return (6.28/ENCODER_NUM_DIV) * encoder->vel;
+void encoder_resetCount(Encoder* encoder) {
+    portENTER_CRITICAL(encoder->mux);
+    encoder->count = 0;
+    portEXIT_CRITICAL(encoder->mux);
 }
 
 void encoder_init(Encoder* encoder, int in) {
@@ -87,16 +66,10 @@ void encoder_init(Encoder* encoder, int in) {
         isr_installed = true;
     }
     encoder->pin = in;
-    encoder->count = 0;
-    encoder->vel = 0.0;
+    encoder->count = 0; 
+    encoder->mux = malloc(sizeof(portMUX_TYPE));
+    if (encoder->mux != NULL) {
+        *encoder->mux = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+    }
     encoder_register(encoder);
-
-    xTaskCreatePinnedToCore(encoder_update_task,
-                            "EncoderUpdateTask",
-                            2048,
-                            (void*) encoder,
-                            4,
-                            NULL,
-                            1
-                        );
 }

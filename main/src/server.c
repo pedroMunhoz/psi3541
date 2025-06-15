@@ -144,26 +144,42 @@ static esp_err_t static_file_handler(httpd_req_t *req) {
 static esp_err_t car_handler(httpd_req_t *req) {
     myServer *server = (myServer *)req->user_ctx;
     char buffer[MAX_REQ_LEN];
-    int received_move;
-    bool data_valid = false;
+    int received_state, received_ref;
+    bool valid_state = false, valid_ref = false;
 
     if (req->content_len > 0) {
         if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
             return httpd_resp_send_500(req);
         }
 
-        data_valid = extract_data_from_json(buffer, "move", JSON_TYPE_INT, &received_move, sizeof(int));
-        if (!data_valid) {
-            ESP_LOGE(TAG, "Invalid or missing 'state' in JSON");
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid or missing 'state'");
+        valid_state = extract_data_from_json(buffer, "state", JSON_TYPE_INT, &received_state, sizeof(int));
+        valid_ref = extract_data_from_json(buffer, "ref", JSON_TYPE_INT, &received_ref, sizeof(int));
+
+        if (!valid_state || !valid_ref) {
+            ESP_LOGE(TAG, "Invalid or missing 'state' or 'ref' in JSON");
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid 'state' or 'ref'");
         }
+    } else {
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty body");
     }
 
-    messenger_send_int(
+    Action action = {
+        .state = received_state,
+        .ref = received_ref
+    };
+
+    int result;
+    esp_err_t err = messenger_send_with_response_generic(
         server->messenger,
         MESSAGE_CAR_MOVE,
-        received_move
+        (void*)&action,
+        &result,
+        sizeof(int)
     );
+
+    if (err != ESP_OK) {
+        return httpd_resp_send_500(req);
+    }
 
     return httpd_resp_send(req, NULL, 0);
 }
@@ -245,7 +261,6 @@ static esp_err_t mqtt_task_control_handler(httpd_req_t *req) {
         return httpd_resp_send_500(req);
     }
 }
-
 /*####################################################################*/
 
 static static_route_t static_routes[] = {

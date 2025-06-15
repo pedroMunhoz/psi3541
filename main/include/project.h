@@ -38,10 +38,19 @@ typedef enum {
     MESSAGE_UNKNOWN
 } messenger_message_type_t;
 
+typedef enum {
+    STATE_FRENTE,
+    STATE_TRAS,
+    STATE_ESQ,
+    STATE_DIR,
+    STATE_ROT_ESQ,
+    STATE_ROT_DIR,
+    STATE_STOP
+} CarState;
 typedef struct {
-    float temperature;
-    float humidity;
-} dht_data_t;
+    CarState state;
+    int ref;
+} Action;
 
 #define LED_UPDATE_PERIOD 200   //ms
 #define DHT_UPDATE_PERIOD 1000  //ms

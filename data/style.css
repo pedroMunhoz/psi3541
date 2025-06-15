@@ -114,8 +114,12 @@ h1, h3 {
 }
 
 .button-green {
-    background-color: #28a745; /* Green for enabling */
+    background-color: #008c3a;
     color: white;
+}
+
+.button-green:active, .button-green.pressed {
+    background-color: #005f27;
 }
 
 .button-red {
