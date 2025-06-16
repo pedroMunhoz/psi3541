@@ -88,7 +88,30 @@
             <h4>Status</h4>
             <div id="car-status-content" class="status-content">
                 Carregando status...
+                <div style="margin-top:12px;">
+                    <div id="progress-bar-container" style="background:#e0e0e0; border-radius:8px; height:18px; width:100%; max-width:220px; margin:0 auto; overflow:hidden;">
+                        <div id="progress-bar" style="background:#008c3a; height:100%; width:0%; transition:width 0.3s;"></div>
+                    </div>
+                    <div id="progress-text" style="font-size:0.95em; margin-top:4px; color:#333;"></div>
+                </div>
+                <canvas id="car-canvas" width="180" height="80" style="margin-top:12px; display:block; margin-left:auto; margin-right:auto;"></canvas>
             </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="card full-width" id="mqtt-tasks-card">
+            <h3>MQTT Publish Tasks</h3>
+            <table id="mqtt-tasks-table" style="width:100%; text-align:center;">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be filled by JS -->
+                </tbody>
+            </table>
         </div>
     </div>
 

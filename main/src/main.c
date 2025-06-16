@@ -6,7 +6,7 @@
 #include "Messenger.h"
 #include "filesystem.h"
 #include "server.h"
-// #include "mqtt.h"
+#include "mqtt.h"
 #include "car.h"
 
 #define TIME_TO_TEST 2000
@@ -17,7 +17,7 @@ typedef struct {
     Messenger messenger;
     Filesystem fs;
     myServer server;
-    // Mqtt mqtt;
+    Mqtt mqtt;
     Car car;
 } System;
 
@@ -80,6 +80,9 @@ void app_main() {
 
     server_init(&sys.server);
     server_setMessenger(&sys.server, &sys.messenger);
+
+    mqtt_init(&sys.mqtt);
+    mqtt_setMessenger(&sys.mqtt, &sys.messenger);
     
     wifi_debug_init();
     // testCar();

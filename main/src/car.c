@@ -229,6 +229,14 @@ void carControl(void* param) {
                 break;
             }
 
+            if (car->cur == 0) {
+                motor_setDirection(&car->motorR, forward ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
+                motor_setDirection(&car->motorL, forward ? MOTOR_ANTIHORARIO : MOTOR_HORARIO);
+                motor_setPot(&car->motorL, 100);
+                motor_setPot(&car->motorR, 100);
+                vTaskDelay(pdMS_TO_TICKS(250));
+            }
+
             motor_setDirection(&car->motorR, forward ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
             motor_setDirection(&car->motorL, forward ? MOTOR_ANTIHORARIO : MOTOR_HORARIO);
             
