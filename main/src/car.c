@@ -102,13 +102,8 @@ static int motor_getPot(Motor *motor) {
 }
 
 static void motor_setPot(Motor *motor, int pot) {
-    if (pot < 50) pot = 50;
-    if (pot > 95) pot = 95;
-
-    // int real_pot = 50 + (pot * 50) / 100;
-    // motor->pot = real_pot;
-
-    // wifi_debug_printf("\tSetting pot of motor %d to %d%%\n", motor->lado, pot);
+    if (pot < 70) pot = 70; // Aumente aqui conforme necessário
+    if (pot > 100) pot = 100;
     motor->pot = pot;
 
     if (motor->lado == LEFT) {
@@ -122,7 +117,7 @@ static void motor_setPot(Motor *motor, int pot) {
 
 void car_move(Car* car, Action action) {
     car->done = false;
-    int carPot = 80;
+    int carPot = 100;
 
     switch (action.state) {
     case STATE_FRENTE:
@@ -172,16 +167,26 @@ static void controlePD(
     int countL, int countR,
     float kp_dir_total,
     float kd_dir,
-    int *potL, int *potR
+    int *potL, int *potR,
+    float ki_dir // novo parâmetro Ki
 ) {
     static int prev_e_dir = 0;
+    static float i_e_dir = 0; // termo integrativo
 
     int e_dir = deltaR - deltaL;
     int delta_e_dir = e_dir - prev_e_dir;
     prev_e_dir = e_dir;
     int e_dir_total = countR - countL;
 
-    float output_dir = kp_dir * e_dir + kd_dir * delta_e_dir + kp_dir_total * e_dir_total;
+    i_e_dir += e_dir;
+    // Anti-windup: limite o termo integrativo
+    if (i_e_dir > 1000) i_e_dir = 1000;
+    if (i_e_dir < -1000) i_e_dir = -1000;
+
+    float output_dir = kp_dir * e_dir
+                     + kd_dir * delta_e_dir
+                     + kp_dir_total * e_dir_total
+                     + ki_dir * i_e_dir;
 
     *potR = basePotR - (int)(output_dir / 2);
     *potL = basePotL + (int)(output_dir / 2);
@@ -199,6 +204,8 @@ void carControl(void* param) {
     int countR;
     int deltaL;
     int deltaR;
+
+    int potR,potL;
 
     while(1) {
         switch (car->state) {
@@ -240,12 +247,12 @@ void carControl(void* param) {
             motor_setDirection(&car->motorR, forward ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
             motor_setDirection(&car->motorL, forward ? MOTOR_ANTIHORARIO : MOTOR_HORARIO);
             
-            int potR,potL;
             controlePD(motor_getPot(&car->motorL), motor_getPot(&car->motorR), 
                                     deltaL, deltaR, car->config.Kp,
                                     countL, countR, car->config.Kp_total,
                                     car->config.Kd, 
-                                    &potL, &potR);
+                                    &potL, &potR,
+                                    car->config.Ki);
 
             motor_setPot(&car->motorR, potR);
             motor_setPot(&car->motorL, potL);
@@ -293,6 +300,13 @@ void carControl(void* param) {
 
             motor_setDirection(&car->motorR, esquerda ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
             motor_setDirection(&car->motorL, esquerda ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
+
+            controlePD(motor_getPot(&car->motorL), motor_getPot(&car->motorR), 
+                                    deltaL, deltaR, car->config.Kp,
+                                    0, 0, 0,
+                                    car->config.Kd, 
+                                    &potL, &potR,
+                                    car->config.Ki);
 
             motor_setPot(&car->motorR, potR);
             motor_setPot(&car->motorL, potL);
@@ -380,6 +394,7 @@ void car_init(Car* car, Pin in1, Pin in2, Pin in3, Pin in4, Pin enA, Pin enB) {
     car->config.Kp = KP_DIR;
     car->config.Kp_total = KP_DIR_TOTAL;
     car->config.Kd = KD_DIR;
+    car->config.Ki = KI_DIR;
 
     xTaskCreate(carControl, "car_control_task", 4096, car, 15, NULL);
 }

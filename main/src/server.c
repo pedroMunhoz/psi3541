@@ -201,8 +201,8 @@ static esp_err_t car_handler(httpd_req_t *req) {
 static esp_err_t car_config_handler(httpd_req_t *req) {
     myServer *server = (myServer *)req->user_ctx;
     char buffer[MAX_REQ_LEN];
-    float Kp, Kp_total, Kd;
-    bool valid_Kp, valid_Kp_total, valid_Kd = false;
+    float Kp, Kp_total, Kd, Ki;
+    bool valid_Kp, valid_Kp_total, valid_Kd, valid_Ki = false;
 
     wifi_debug_printf("[car_config_handler] Nova requisição recebida\n");
 
@@ -217,22 +217,25 @@ static esp_err_t car_config_handler(httpd_req_t *req) {
         valid_Kp = extract_data_from_json(buffer, "Kp", JSON_TYPE_FLOAT, &Kp, sizeof(float));
         valid_Kp_total = extract_data_from_json(buffer, "Kp_total", JSON_TYPE_FLOAT, &Kp_total, sizeof(float));
         valid_Kd = extract_data_from_json(buffer, "Kd", JSON_TYPE_FLOAT, &Kd, sizeof(float));
+        valid_Ki = extract_data_from_json(buffer, "Ki", JSON_TYPE_FLOAT, &Ki, sizeof(float));
 
         if (!valid_Kd) Kd = KD_DIR;
         if (!valid_Kp) Kp = KP_DIR;
         if (!valid_Kp_total) Kp_total = KP_DIR_TOTAL;
+        if (!valid_Ki) Ki = KI_DIR;
 
-        if (!valid_Kd && !valid_Kp && !valid_Kp_total) {
+        if (!valid_Kd && !valid_Kp && !valid_Kp_total && !valid_Ki) {
             wifi_debug_printf("[car_config_handler] Erro: 'Kp', 'Kd' ou 'Kp_total' inválido ou ausente\n");
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid 'Kp', 'Kd' or 'Kp_total'");
         }
 
-        wifi_debug_printf("[car_config_handler] Kp=%f, Kp_total=%f, Kd=%f\n", Kp, Kp_total, Kd);
+        wifi_debug_printf("[car_config_handler] Kp=%f, Kp_total=%f, Kd=%f, Ki=%f\n", Kp, Kp_total, Kd, Ki);
 
         CarConfig config = {
             .Kd = Kd,
             .Kp = Kp,
-            .Kp_total = Kp_total
+            .Kp_total = Kp_total,
+            .Ki = Ki
         };
 
         CarConfig resultConfig;
@@ -248,6 +251,7 @@ static esp_err_t car_config_handler(httpd_req_t *req) {
             char* json = create_json("Kp", JSON_TYPE_FLOAT, resultConfig.Kp,
                                      "Kp_total", JSON_TYPE_FLOAT, resultConfig.Kp_total,
                                      "Kd", JSON_TYPE_FLOAT, resultConfig.Kd,
+                                     "Ki", JSON_TYPE_FLOAT, resultConfig.Ki,
                                      NULL);
             return send_json_response(req, json);
         } else {
@@ -270,6 +274,7 @@ static esp_err_t car_config_handler(httpd_req_t *req) {
             char* json = create_json("Kp", JSON_TYPE_FLOAT, resultConfig.Kp,
                                      "Kp_total", JSON_TYPE_FLOAT, resultConfig.Kp_total,
                                      "Kd", JSON_TYPE_FLOAT, resultConfig.Kd,
+                                     "Ki", JSON_TYPE_FLOAT, resultConfig.Ki,
                                      NULL);
             return send_json_response(req, json);
         } else {

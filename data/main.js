@@ -54,6 +54,7 @@ function fetchCarConfig() {
         document.getElementById('kp-value').value = (Math.round(cfg.Kp * 100) / 100).toFixed(2);
         document.getElementById('kp-total-value').value = (Math.round(cfg.Kp_total * 100) / 100).toFixed(2);
         document.getElementById('kd-value').value = (Math.round(cfg.Kd * 100) / 100).toFixed(2);
+        document.getElementById('ki-value').value = (Math.round(cfg.Ki * 100) / 100).toFixed(2);
     });
 }
 
@@ -61,11 +62,12 @@ function sendCarConfig() {
     const Kp = parseFloat(document.getElementById('kp-value').value);
     const Kp_total = parseFloat(document.getElementById('kp-total-value').value);
     const Kd = parseFloat(document.getElementById('kd-value').value);
+    const Ki = parseFloat(document.getElementById('ki-value').value);
 
     fetch('/carConfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ Kp, Kp_total, Kd })
+        body: JSON.stringify({ Kp, Kp_total, Kd, Ki })
     })
     .then(res => res.json())
     .then(cfg => {
@@ -73,6 +75,7 @@ function sendCarConfig() {
         document.getElementById('kp-value').value = (Math.round(cfg.Kp * 100) / 100).toFixed(2);
         document.getElementById('kp-total-value').value = (Math.round(cfg.Kp_total * 100) / 100).toFixed(2);
         document.getElementById('kd-value').value = (Math.round(cfg.Kd * 100) / 100).toFixed(2);
+        document.getElementById('ki-value').value = (Math.round(cfg.Ki * 100) / 100).toFixed(2);
     })
     .catch(() => {
         document.getElementById('config-status').textContent = "Erro ao enviar configuração.";

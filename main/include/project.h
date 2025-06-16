@@ -31,6 +31,7 @@
 #define KP_DIR 2.0
 #define KP_DIR_TOTAL 10.0
 #define KD_DIR 0.4
+#define KI_DIR 1.0
 
 typedef int Pin;
 
@@ -63,6 +64,7 @@ typedef struct {
     float Kp;
     float Kp_total;
     float Kd;
+    float Ki;
 } CarConfig;
 
 typedef struct {
