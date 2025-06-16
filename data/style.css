@@ -185,3 +185,78 @@ input:checked + .slider:before {
     border-bottom: 1.5px solid #03407856;
     background: #f4f4f956;
 }
+
+.main-flex {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 32px;
+    margin: 0 auto;
+    max-width: 1200px;
+}
+
+.card.main-card {
+    min-width: 320px;
+    max-width: 400px;
+    margin: 24px 0;
+    box-shadow: 0 4px 16px #0001;
+}
+
+.card.slim-card {
+    min-width: 220px;
+    max-width: 260px;
+    margin: 24px 0;
+    box-shadow: 0 2px 8px #0001;
+    background: #f7fafd;
+}
+
+.config-fields > div {
+    margin-bottom: 10px;
+}
+
+.input-slim {
+    border: none;
+    border-bottom: 1.5px solid #bbb;
+    background: #f7fafd;
+    padding: 4px 8px;
+    border-radius: 3px 3px 0 0;
+    font-size: 1.1em;
+    width: 70px;
+    transition: border-color 0.2s, background 0.2s;
+    outline: none;
+}
+.input-slim:focus {
+    border-bottom: 2px solid #034078;
+    background: #eaf3fb;
+}
+
+.status-text {
+    margin-top: 10px;
+    color: #034078;
+    font-size: 0.98em;
+    min-height: 1.2em;
+}
+
+.status-content {
+    font-size: 1.1em;
+    margin-top: 10px;
+    color: #222;
+    background: #f7fafd;
+    border-radius: 6px;
+    padding: 10px 0;
+    min-height: 70px;
+}
+
+@media (max-width: 900px) {
+    .main-flex {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+    .card.main-card, .card.slim-card {
+        max-width: 98vw;
+        min-width: 0;
+        margin: 16px auto;
+    }
+}

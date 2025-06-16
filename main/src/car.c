@@ -8,29 +8,29 @@
 #define MOTOR_TASK_PRIORITY   10
 
 static void motor_update_task(void *param) {
-    Motor *motor = (Motor *)param;
-    while (1) {
-        if (motor->sentido == MOTOR_HORARIO) {
-            gpio_set_level(motor->in1, 1);
-            gpio_set_level(motor->in2, 0);
-        } else if (motor->sentido == MOTOR_ANTIHORARIO) {
-            gpio_set_level(motor->in1, 0);
-            gpio_set_level(motor->in2, 1);
-        } else {
-            gpio_set_level(motor->in1, 0);
-            gpio_set_level(motor->in2, 0);
-        }
+    // Motor *motor = (Motor *)param;
+    // while (1) {
+    //     if (motor->sentido == MOTOR_HORARIO) {
+    //         gpio_set_level(motor->in1, 1);
+    //         gpio_set_level(motor->in2, 0);
+    //     } else if (motor->sentido == MOTOR_ANTIHORARIO) {
+    //         gpio_set_level(motor->in1, 0);
+    //         gpio_set_level(motor->in2, 1);
+    //     } else {
+    //         gpio_set_level(motor->in1, 0);
+    //         gpio_set_level(motor->in2, 0);
+    //     }
 
-        if (motor->lado == LEFT) {
-            mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, motor->pot);
-            mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0);
-        } else {
-            mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, motor->pot);
-            mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0);            
-        }
+    //     if (motor->lado == LEFT) {
+    //         mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, motor->pot);
+    //         mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0);
+    //     } else {
+    //         mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, motor->pot);
+    //         mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0);            
+    //     }
 
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
+    //     vTaskDelay(pdMS_TO_TICKS(10));
+    // }
 }
 
 static void motor_init(Motor* motor, Pin in1, Pin in2, Pin en, Lado lado) {
@@ -63,7 +63,7 @@ static void motor_init(Motor* motor, Pin in1, Pin in2, Pin en, Lado lado) {
 	mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);
 
     // Create the update task for this motor
-    xTaskCreate(motor_update_task, "motor_update_task", MOTOR_TASK_STACK_SIZE, motor, MOTOR_TASK_PRIORITY, NULL);
+    // xTaskCreate(motor_update_task, "motor_update_task", MOTOR_TASK_STACK_SIZE, motor, MOTOR_TASK_PRIORITY, NULL);
 }
 
 static motor_sentido_t motor_getDirection(Motor *motor) {
@@ -84,6 +84,17 @@ void motor_setDirection(Motor *motor, motor_sentido_t sentido) {
     if (sentido == MOTOR_HORARIO || sentido == MOTOR_ANTIHORARIO || sentido == MOTOR_PARADO) {
         motor->sentido = sentido;
     }
+
+    if (motor->sentido == MOTOR_HORARIO) {
+        gpio_set_level(motor->in1, 1);
+        gpio_set_level(motor->in2, 0);
+    } else if (motor->sentido == MOTOR_ANTIHORARIO) {
+        gpio_set_level(motor->in1, 0);
+        gpio_set_level(motor->in2, 1);
+    } else {
+        gpio_set_level(motor->in1, 0);
+        gpio_set_level(motor->in2, 0);
+    }
 }
 
 static int motor_getPot(Motor *motor) {
@@ -99,6 +110,14 @@ static void motor_setPot(Motor *motor, int pot) {
 
     // wifi_debug_printf("\tSetting pot of motor %d to %d%%\n", motor->lado, pot);
     motor->pot = pot;
+
+    if (motor->lado == LEFT) {
+        mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, motor->pot);
+        mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0);
+    } else {
+        mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, motor->pot);
+        mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0);            
+    }
 }
 
 void car_move(Car* car, Action action) {
@@ -146,6 +165,28 @@ void car_move(Car* car, Action action) {
     }
 }
 
+static void controlePD(
+    int basePotL, int basePotR,
+    int deltaL, int deltaR,
+    float kp_dir,
+    int countL, int countR,
+    float kp_dir_total,
+    float kd_dir,
+    int *potL, int *potR
+) {
+    static int prev_e_dir = 0;
+
+    int e_dir = deltaR - deltaL;
+    int delta_e_dir = e_dir - prev_e_dir;
+    prev_e_dir = e_dir;
+    int e_dir_total = countR - countL;
+
+    float output_dir = kp_dir * e_dir + kd_dir * delta_e_dir + kp_dir_total * e_dir_total;
+
+    *potR = basePotR - (int)(output_dir / 2);
+    *potL = basePotL + (int)(output_dir / 2);
+}
+
 void carControl(void* param) {
     Car* car = (Car*) param;
     static float i_error_dist = 0;
@@ -188,19 +229,15 @@ void carControl(void* param) {
                 break;
             }
 
-            // --- Controle PD de direção ---
-            int e_dir = deltaR - deltaL;
-            int delta_e_dir = e_dir - prev_e_dir;
-            prev_e_dir = e_dir;
-            int e_dir_total = countR - countL;
-            float output_dir = KP_DIR * e_dir + KD_DIR * delta_e_dir + KP_DIR_TOTAL * e_dir_total;
-
-            // Aplica potência ajustada
-            int potR = motor_getPot(&car->motorR) - output_dir / 2;
-            int potL = motor_getPot(&car->motorL) + output_dir / 2;
-
             motor_setDirection(&car->motorR, forward ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
             motor_setDirection(&car->motorL, forward ? MOTOR_ANTIHORARIO : MOTOR_HORARIO);
+            
+            int potR,potL;
+            controlePD(motor_getPot(&car->motorL), motor_getPot(&car->motorR), 
+                                    deltaL, deltaR, car->config.Kp,
+                                    countL, countR, car->config.Kp_total,
+                                    car->config.Kd, 
+                                    &potL, &potR);
 
             motor_setPot(&car->motorR, potR);
             motor_setPot(&car->motorL, potL);
@@ -274,15 +311,55 @@ static void handleAction(messenger_message_t *message, void *context) {
     Car* car = (Car*) context;
 
     Action action;
+    if (!message || !message->data) {
+        wifi_debug_printf("[handleAction] ERRO: message ou message->data nulo!\n");
+        int resp = 0;
+        messenger_setResponse(message, (void*)&resp);
+        return;
+    }
     messenger_getStruct_from_message_data(message, &action, sizeof(Action));
 
-    wifi_debug_printf("Chamou acao com - state: %d, ref: %d\n", action.state, action.ref);
+    wifi_debug_printf("[handleAction] Chamou acao com - state: %d, ref: %d\n", action.state, action.ref);
     
     car_move(car, action);
 
     int resp = 1;
     messenger_setResponse(message, (void*)&resp);
 }
+
+static void handleSetConfig(messenger_message_t *message, void *context) {
+    Car* car = (Car*) context;
+
+    if (!message || !message->data) {
+        wifi_debug_printf("[handleSetConfig] ERRO: message ou message->data nulo!\n");
+        return;
+    }
+    messenger_getStruct_from_message_data(message, &car->config, sizeof(CarConfig));
+
+    wifi_debug_printf("[handleSetConfig] Configuração recebida: Kp=%.3f, Kp_total=%.3f, Kd=%.3f\n",
+        car->config.Kp, car->config.Kp_total, car->config.Kd);
+
+    messenger_setResponse(message, (void*)&car->config);
+}
+
+static void handleGetConfig(messenger_message_t *message, void *context) {
+    Car* car = (Car*) context;
+    wifi_debug_printf("[handleGetConfig] Enviando configuração atual: Kp=%.3f, Kp_total=%.3f, Kd=%.3f\n",
+        car->config.Kp, car->config.Kp_total, car->config.Kd);
+
+    messenger_setResponse(message, (void*)&car->config);
+}
+
+static void handleGetStatus(messenger_message_t* message, void* context) {
+    Car* car = (Car*) context;
+
+    CarStatus status = {.cur = car->cur, .done = car->done, .ref=car->ref, .state = car->state};
+    wifi_debug_printf("[handleGetStatus] Status: state=%d, ref=%d, cur=%d, done=%d\n",
+        status.state, status.ref, status.cur, status.done);
+
+    messenger_setResponse(message, (void*)&status);
+}
+
 
 void car_init(Car* car, Pin in1, Pin in2, Pin in3, Pin in4, Pin enA, Pin enB) {
     motor_init(&(car->motorR), in1, in2, enA, RIGHT);
@@ -292,6 +369,9 @@ void car_init(Car* car, Pin in1, Pin in2, Pin in3, Pin in4, Pin enA, Pin enB) {
     car->done = false;
     car->ref = 0;
     car->state = STATE_STOP;
+    car->config.Kp = KP_DIR;
+    car->config.Kp_total = KP_DIR_TOTAL;
+    car->config.Kd = KD_DIR;
 
     xTaskCreate(carControl, "car_control_task", 4096, car, 15, NULL);
 }
@@ -300,4 +380,7 @@ void car_setMessenger(Car* car, Messenger* messenger) {
     car->messenger = messenger;
 
     messenger_register_handler(car->messenger, MESSAGE_CAR_MOVE, handleAction, car);
+    messenger_register_handler(car->messenger, MESSAGE_CAR_GET_CONFIG, handleGetConfig, car);
+    messenger_register_handler(car->messenger, MESSAGE_CAR_SET_CONFIG, handleSetConfig, car);
+    messenger_register_handler(car->messenger, MESSAGE_CAR_GET_STATUS, handleGetStatus, car);
 }

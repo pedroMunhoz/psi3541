@@ -28,6 +28,10 @@
 
 #define NUM_ENCODERS 2
 
+#define KP_DIR 2.0
+#define KP_DIR_TOTAL 10.0
+#define KD_DIR 0.4
+
 typedef int Pin;
 
 typedef enum {
@@ -35,6 +39,9 @@ typedef enum {
     MESSAGE_MQTT_STOP,
     MESSAGE_MQTT_STATUS,
     MESSAGE_CAR_MOVE,
+    MESSAGE_CAR_SET_CONFIG,
+    MESSAGE_CAR_GET_CONFIG,
+    MESSAGE_CAR_GET_STATUS,
     MESSAGE_UNKNOWN
 } messenger_message_type_t;
 
@@ -52,8 +59,18 @@ typedef struct {
     int ref;
 } Action;
 
-#define LED_UPDATE_PERIOD 200   //ms
-#define DHT_UPDATE_PERIOD 1000  //ms
+typedef struct {
+    float Kp;
+    float Kp_total;
+    float Kd;
+} CarConfig;
+
+typedef struct {
+    CarState state;
+    int ref;
+    int cur;
+    bool done;
+} CarStatus;
 
 typedef enum {
     JSON_TYPE_INT,

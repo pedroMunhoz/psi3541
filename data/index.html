@@ -2,24 +2,47 @@
 <html>
 
 <head>
-    <title>PSI3541 - Sistemas Embarcados Distribuidos (2025)</title>
+    <meta charset="UTF-8">
+    <title>PSI3541 - Sistemas Embarcados Distribuídos (2025)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="https://www.espressif.com/sites/all/themes/espressif/favicon.ico" type="image/vnd.microsoft.icon">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
-        integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+        crossorigin="anonymous">
 </head>
 
 <body>
     <header>
-        <h1>PSI3541 - Sistemas Embarcados Distribuidos (2025)</h1>
+        <h1>PSI3541 - Sistemas Embarcados Distribuídos (2025)</h1>
         <h3>Aluno: Pedro Alves Munhoz - 11257053</h3>
     </header>
 
+    <div class="main-flex">
+        <!-- Configuração do Controle PD (esquerda) -->
+        <div class="card slim-card" id="car-config-menu">
+            <h4>Controle PD</h4>
+            <div class="config-fields">
+                <div>
+                    <label for="kp-value">Kp</label>
+                    <input type="number" id="kp-value" step="0.01" min="0" class="input-slim">
+                </div>
+                <div>
+                    <label for="kp-total-value">Kp_total</label>
+                    <input type="number" id="kp-total-value" step="0.01" min="0" class="input-slim">
+                </div>
+                <div>
+                    <label for="kd-value">Kd</label>
+                    <input type="number" id="kd-value" step="0.01" min="0" class="input-slim">
+                </div>
+                <button class="button button-green" id="send-config-btn">
+                    Enviar
+                </button>
+                <div id="config-status" class="status-text"></div>
+            </div>
+        </div>
 
-    <div class="content">
-        <!-- Car Move Menu Card -->
-        <div class="card" id="car-move-menu" style="max-width:400px; margin: 24px auto; text-align:center;">
+        <!-- Car Move Menu Card (centro) -->
+        <div class="card main-card" id="car-move-menu">
             <h4>Movimentar Carrinho</h4>
             <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
                 <div>
@@ -28,8 +51,16 @@
                     </button>
                 </div>
                 <div>
-                    <button class="button car-move-menu-btn" data-state="1" data-label="Tras">
-                        <i class="fas fa-arrow-down"></i> Tras
+                    <button class="button car-move-menu-btn" data-state="1" data-label="Trás">
+                        <i class="fas fa-arrow-down"></i> Trás
+                    </button>
+                </div>
+                <div>
+                    <button class="button car-move-menu-btn" data-state="2" data-label="Esquerda">
+                        <i class="fas fa-arrow-left"></i> Esquerda
+                    </button>
+                    <button class="button car-move-menu-btn" data-state="3" data-label="Direita">
+                        <i class="fas fa-arrow-right"></i> Direita
                     </button>
                 </div>
                 <div>
@@ -41,25 +72,27 @@
                     </button>
                 </div>
                 <div style="margin-top:10px;">
-                    <label for="ref-value">Referencia:&nbsp;</label>
-                    <input type="number" id="ref-value" value="50" min="1" style="width:60px;">
+                    <label for="ref-value">Referência</label>
+                    <input type="number" id="ref-value" value="50" min="1" step="0.01" class="input-slim" style="width:60px;">
                     <span id="ref-unit">cm</span>
                 </div>
-                <div>
-                    <button class="button button-green" id="send-move-btn">
-                        Enviar Comando
-                    </button>
-                </div>
+                <button class="button button-green" id="send-move-btn" style="margin-top:8px;">
+                    Enviar Comando
+                </button>
             </div>
-            <div id="move-status" style="margin-top:10px; color: #333;"></div>
+            <div id="move-status" class="status-text"></div>
         </div>
 
+        <!-- Status do Carrinho (direita) -->
+        <div class="card slim-card" id="car-status-menu">
+            <h4>Status</h4>
+            <div id="car-status-content" class="status-content">
+                Carregando status...
+            </div>
+        </div>
     </div>
-
-
 
     <script src="main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js" type="application/javascript"></script>
 </body>
-
 </html>

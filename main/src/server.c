@@ -1,4 +1,5 @@
 #include "server.h"
+#include "project.h" // Para wifi_debug_printf
 
 static const char *TAG = "server"; // TAG for debug
 
@@ -24,6 +25,9 @@ static char *create_json(const char *key, ...) {
         } else if (type == JSON_TYPE_STRING) {
             const char *value = va_arg(args, const char *);
             cJSON_AddStringToObject(json, current_key, value);
+        } else if (type == JSON_TYPE_BOOL) {
+            int value = va_arg(args, int);
+            cJSON_AddBoolToObject(json, current_key, value);
         } else {
             cJSON_Delete(json);
             va_end(args);
@@ -147,21 +151,29 @@ static esp_err_t car_handler(httpd_req_t *req) {
     int received_state, received_ref;
     bool valid_state = false, valid_ref = false;
 
+    wifi_debug_printf("[car_handler] Nova requisição recebida\n");
+
     if (req->content_len > 0) {
         if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
+            wifi_debug_printf("[car_handler] Erro ao ler body\n");
             return httpd_resp_send_500(req);
         }
+
+        wifi_debug_printf("[car_handler] Body recebido: %s\n", buffer);
 
         valid_state = extract_data_from_json(buffer, "state", JSON_TYPE_INT, &received_state, sizeof(int));
         valid_ref = extract_data_from_json(buffer, "ref", JSON_TYPE_INT, &received_ref, sizeof(int));
 
         if (!valid_state || !valid_ref) {
-            ESP_LOGE(TAG, "Invalid or missing 'state' or 'ref' in JSON");
+            wifi_debug_printf("[car_handler] Erro: 'state' ou 'ref' inválido ou ausente\n");
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid 'state' or 'ref'");
         }
     } else {
+        wifi_debug_printf("[car_handler] Erro: Body vazio\n");
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty body");
     }
+
+    wifi_debug_printf("[car_handler] state=%d, ref=%d\n", received_state, received_ref);
 
     Action action = {
         .state = received_state,
@@ -178,10 +190,121 @@ static esp_err_t car_handler(httpd_req_t *req) {
     );
 
     if (err != ESP_OK) {
+        wifi_debug_printf("[car_handler] Erro ao enviar mensagem para o messenger\n");
         return httpd_resp_send_500(req);
     }
 
+    wifi_debug_printf("[car_handler] Comando enviado com sucesso\n");
     return httpd_resp_send(req, NULL, 0);
+}
+
+static esp_err_t car_config_handler(httpd_req_t *req) {
+    myServer *server = (myServer *)req->user_ctx;
+    char buffer[MAX_REQ_LEN];
+    float Kp, Kp_total, Kd;
+    bool valid_Kp, valid_Kp_total, valid_Kd = false;
+
+    wifi_debug_printf("[car_config_handler] Nova requisição recebida\n");
+
+    if (req->content_len > 0) {
+        if (read_request_body(req, buffer, sizeof(buffer)) != ESP_OK) {
+            wifi_debug_printf("[car_config_handler] Erro ao ler body\n");
+            return httpd_resp_send_500(req);
+        }
+
+        wifi_debug_printf("[car_config_handler] Body recebido: %s\n", buffer);
+
+        valid_Kp = extract_data_from_json(buffer, "Kp", JSON_TYPE_FLOAT, &Kp, sizeof(float));
+        valid_Kp_total = extract_data_from_json(buffer, "Kp_total", JSON_TYPE_FLOAT, &Kp_total, sizeof(float));
+        valid_Kd = extract_data_from_json(buffer, "Kd", JSON_TYPE_FLOAT, &Kd, sizeof(float));
+
+        if (!valid_Kd) Kd = KD_DIR;
+        if (!valid_Kp) Kp = KP_DIR;
+        if (!valid_Kp_total) Kp_total = KP_DIR_TOTAL;
+
+        if (!valid_Kd && !valid_Kp && !valid_Kp_total) {
+            wifi_debug_printf("[car_config_handler] Erro: 'Kp', 'Kd' ou 'Kp_total' inválido ou ausente\n");
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid 'Kp', 'Kd' or 'Kp_total'");
+        }
+
+        wifi_debug_printf("[car_config_handler] Kp=%f, Kp_total=%f, Kd=%f\n", Kp, Kp_total, Kd);
+
+        CarConfig config = {
+            .Kd = Kd,
+            .Kp = Kp,
+            .Kp_total = Kp_total
+        };
+
+        CarConfig resultConfig;
+        bool ok = messenger_send_with_response_generic(server->messenger, 
+                                                       MESSAGE_CAR_SET_CONFIG, 
+                                                       (void*)&config,
+                                                       &resultConfig,
+                                                       sizeof(CarConfig)
+                                                    );
+        
+        if (ok) {
+            wifi_debug_printf("[car_config_handler] Configuração enviada com sucesso\n");
+            char* json = create_json("Kp", JSON_TYPE_FLOAT, resultConfig.Kp,
+                                     "Kp_total", JSON_TYPE_FLOAT, resultConfig.Kp_total,
+                                     "Kd", JSON_TYPE_FLOAT, resultConfig.Kd,
+                                     NULL);
+            return send_json_response(req, json);
+        } else {
+            wifi_debug_printf("[car_config_handler] Erro ao enviar mensagem para o messenger\n");
+            return httpd_resp_send_500(req);
+        }
+        
+    } else {
+        wifi_debug_printf("[car_config_handler] Requisição GET de configuração\n");
+        CarConfig resultConfig;
+        bool ok = messenger_send_with_response_generic(server->messenger, 
+                                                       MESSAGE_CAR_GET_CONFIG, 
+                                                       NULL,
+                                                       &resultConfig,
+                                                       sizeof(CarConfig)
+                                                    );
+        
+        if (ok) {
+            wifi_debug_printf("[car_config_handler] Configuração obtida com sucesso\n");
+            char* json = create_json("Kp", JSON_TYPE_FLOAT, resultConfig.Kp,
+                                     "Kp_total", JSON_TYPE_FLOAT, resultConfig.Kp_total,
+                                     "Kd", JSON_TYPE_FLOAT, resultConfig.Kd,
+                                     NULL);
+            return send_json_response(req, json);
+        } else {
+            wifi_debug_printf("[car_config_handler] Erro ao obter configuração do messenger\n");
+            return httpd_resp_send_500(req);
+        }
+    }
+    return httpd_resp_send(req, NULL, 0);
+}
+
+static esp_err_t car_status_handler(httpd_req_t *req) {
+    myServer *server = (myServer *)req->user_ctx;
+    char buffer[MAX_REQ_LEN];
+
+    wifi_debug_printf("[car_status_handler] Nova requisição recebida\n");
+
+    CarStatus status;
+    bool ok = messenger_send_with_response_generic(server->messenger, 
+                                                   MESSAGE_CAR_GET_STATUS, 
+                                                   NULL,
+                                                   &status,
+                                                   sizeof(CarStatus)
+                                                );
+    if (ok) {
+        wifi_debug_printf("[car_status_handler] Status: state=%d, ref=%d, cur=%d, done=%d\n",
+            status.state, status.ref, status.cur, status.done);
+        char* json = create_json("state", JSON_TYPE_INT, status.state,
+                                 "ref", JSON_TYPE_INT, status.ref,
+                                 "cur", JSON_TYPE_INT, status.cur,
+                                 "done", JSON_TYPE_BOOL, status.done,
+                                 NULL);
+        return send_json_response(req, json);
+    } else {
+        return httpd_resp_send_500(req);
+    }
 }
 
 static esp_err_t mqtt_tasks_handler(httpd_req_t* req) {
@@ -271,6 +394,8 @@ static static_route_t static_routes[] = {
 
 static api_route_t api_routes[] = {
     { "/carMove",               HTTP_POST, car_handler },
+    { "/carConfig",             HTTP_POST, car_config_handler},
+    { "/carStatus",            HTTP_POST, car_status_handler},
     { "/mqtt_task_control",     HTTP_POST, mqtt_task_control_handler },
     { "/mqtt_tasks",            HTTP_POST, mqtt_tasks_handler }
 };
