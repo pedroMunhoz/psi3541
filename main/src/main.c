@@ -85,5 +85,8 @@ void app_main() {
     mqtt_setMessenger(&sys.mqtt, &sys.messenger);
     
     wifi_debug_init();
+
+    messenger_message_t m = {.type=MESSAGE_MQTT_START, .int_data=0};
+    messenger_send_message(&sys.messenger, &m);
     // testCar();
 }

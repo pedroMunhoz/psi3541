@@ -117,32 +117,23 @@ static void motor_setPot(Motor *motor, int pot) {
 
 void car_move(Car* car, Action action) {
     car->done = false;
-    int carPot = 100;
 
     switch (action.state) {
     case STATE_FRENTE:
         car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
         car->state=STATE_FRENTE;
-        motor_setPot(&car->motorL, carPot);
-        motor_setPot(&car->motorR, carPot);
         break;
     case STATE_TRAS:
         car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
         car->state=STATE_TRAS;
-        motor_setPot(&car->motorL, carPot);
-        motor_setPot(&car->motorR, carPot);
         break;
     case STATE_ROT_ESQ:
         car->ref = action.ref * (W_CAR * ENCODER_NUM_DIV) / (360.0 * D_CAR);
         car->state=STATE_ROT_ESQ;
-        motor_setPot(&car->motorL, carPot);
-        motor_setPot(&car->motorR, carPot);
         break;
     case STATE_ROT_DIR:
         car->ref = action.ref * (W_CAR * ENCODER_NUM_DIV) / (360.0 * D_CAR);
         car->state=STATE_ROT_DIR;
-        motor_setPot(&car->motorL, carPot);
-        motor_setPot(&car->motorR, carPot);
         break;
     case STATE_ESQ:
         car->ref = action.ref * (ENCODER_NUM_DIV / (PI * D_CAR));
@@ -247,7 +238,7 @@ void carControl(void* param) {
             motor_setDirection(&car->motorR, forward ? MOTOR_HORARIO : MOTOR_ANTIHORARIO);
             motor_setDirection(&car->motorL, forward ? MOTOR_ANTIHORARIO : MOTOR_HORARIO);
             
-            controlePD(motor_getPot(&car->motorL), motor_getPot(&car->motorR), 
+            controlePD(60, 60, 
                                     deltaL, deltaR, car->config.Kp,
                                     countL, countR, car->config.Kp_total,
                                     car->config.Kd, 
@@ -325,7 +316,7 @@ void carControl(void* param) {
             break;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -396,7 +387,7 @@ void car_init(Car* car, Pin in1, Pin in2, Pin in3, Pin in4, Pin enA, Pin enB) {
     car->config.Kd = KD_DIR;
     car->config.Ki = KI_DIR;
 
-    xTaskCreate(carControl, "car_control_task", 4096, car, 15, NULL);
+    xTaskCreate(carControl, "car_control_task", 4096, car, 20, NULL);
 }
 
 void car_setMessenger(Car* car, Messenger* messenger) {

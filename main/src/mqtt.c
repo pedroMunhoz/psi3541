@@ -29,6 +29,9 @@ static char *create_json(const char *key, ...) {
         } else if (type == JSON_TYPE_STRING) {
             const char *value = va_arg(args, const char *);
             cJSON_AddStringToObject(json, current_key, value);
+        } else if (type == JSON_TYPE_BOOL) {
+            int value = va_arg(args, int);
+            cJSON_AddBoolToObject(json, current_key, value);
         } else {
             cJSON_Delete(json);
             va_end(args);
@@ -93,53 +96,53 @@ static bool mqtt_extract_data_from_json(const char *json_str, const char *key, j
 
 /*###############################################################*/
 
-
-// static esp_err_t mqtt_dht11_handler(Mqtt *mqtt, const char *payload, int payload_len) {
-//     dht_data_t dht_data;
-//     bool ok = messenger_send_with_response_generic(
-//         mqtt->messenger,
-//         MESSAGE_DHT,
-//         NULL,
-//         &dht_data,
-//         sizeof(dht_data_t)
-//     );
-
-//     if (ok) {
-//         char *json = create_json("temperature", JSON_TYPE_FLOAT, dht_data.temperature,
-//                                  "humidity", JSON_TYPE_FLOAT, dht_data.humidity, NULL);
-//         esp_mqtt_client_publish(mqtt->client, "/topic/dht11/response", json, 0, 0, 0);
-//         free(json);
-//         return ESP_OK;
-//     }
-//     return ESP_FAIL;
-// }
-
-/*###############################################################*/
-
 static esp_err_t mqtt_config_handler(Mqtt *mqtt, const char *payload, int payload_len) {
     CarConfig config;
     bool is_set = false;
-    float Kp = 0, Kp_total = 0, Kd = 0;
-    bool valid_Kp = false, valid_Kp_total = false, valid_Kd = false;
+    float Kp = 0, Kp_total = 0, Kd = 0, Ki = 0;;
+    bool valid_Kp = false, valid_Kp_total = false, valid_Kd = false, valid_Ki = false;
+    CarConfig resultConfig;
 
     if (payload_len > 0 && payload && payload[0] != '\0') {
         // SET: extrai valores do JSON recebido
         valid_Kp = mqtt_extract_data_from_json(payload, "Kp", JSON_TYPE_FLOAT, &Kp);
         valid_Kp_total = mqtt_extract_data_from_json(payload, "Kp_total", JSON_TYPE_FLOAT, &Kp_total);
         valid_Kd = mqtt_extract_data_from_json(payload, "Kd", JSON_TYPE_FLOAT, &Kd);
+        valid_Ki = mqtt_extract_data_from_json(payload, "Ki", JSON_TYPE_FLOAT, &Ki);
 
-        if (valid_Kp) config.Kp = Kp;
-        if (valid_Kp_total) config.Kp_total = Kp_total;
-        if (valid_Kd) config.Kd = Kd;
 
-        if (valid_Kp || valid_Kp_total || valid_Kd) {
-            CarConfig resultConfig;
+        bool ok = messenger_send_with_response_generic(
+            mqtt->messenger, MESSAGE_CAR_GET_CONFIG, NULL, &resultConfig, sizeof(CarConfig));
+
+        if (valid_Kp)
+            config.Kp = Kp;
+        else 
+            config.Kp = resultConfig.Kp;
+
+        if (valid_Kp_total) 
+            config.Kp_total = Kp_total;
+        else 
+            config.Kp_total = resultConfig.Kp_total;
+
+        if (valid_Kd)
+            config.Kd = Kd;
+        else
+            config.Kd = resultConfig.Kd;
+
+        if (valid_Ki)
+            config.Ki = Ki;
+        else
+            config.Ki = resultConfig.Ki;
+
+        if (valid_Kp || valid_Kp_total || valid_Kd || valid_Ki) {
             bool ok = messenger_send_with_response_generic(
                 mqtt->messenger, MESSAGE_CAR_SET_CONFIG, &config, &resultConfig, sizeof(CarConfig));
             if (ok) {
                 char *json = create_json("Kp", JSON_TYPE_FLOAT, resultConfig.Kp,
                                         "Kp_total", JSON_TYPE_FLOAT, resultConfig.Kp_total,
-                                        "Kd", JSON_TYPE_FLOAT, resultConfig.Kd, NULL);
+                                        "Kd", JSON_TYPE_FLOAT, resultConfig.Kd, 
+                                        "Ki", JSON_TYPE_FLOAT, resultConfig.Ki,
+                                        NULL);
                 esp_mqtt_client_publish(mqtt->client, "/config/response", json, 0, 0, 0);
                 free(json);
                 return ESP_OK;
@@ -156,7 +159,9 @@ static esp_err_t mqtt_config_handler(Mqtt *mqtt, const char *payload, int payloa
         if (ok) {
             char *json = create_json("Kp", JSON_TYPE_FLOAT, resultConfig.Kp,
                                     "Kp_total", JSON_TYPE_FLOAT, resultConfig.Kp_total,
-                                    "Kd", JSON_TYPE_FLOAT, resultConfig.Kd, NULL);
+                                    "Kd", JSON_TYPE_FLOAT, resultConfig.Kd, 
+                                    "Ki", JSON_TYPE_FLOAT, resultConfig.Ki,
+                                    NULL);
             esp_mqtt_client_publish(mqtt->client, "/config/response", json, 0, 0, 0);
             free(json);
             return ESP_OK;
@@ -225,12 +230,10 @@ static void task_publish_car_status(void *arg) {
                                          "cur", JSON_TYPE_INT, status.cur,
                                          "done", JSON_TYPE_BOOL, status.done,
                                          NULL);
-            if (json_str) {
-                esp_mqtt_client_publish(mqtt->client, "/carStatus", json_str, 0, 0, 0);
-                free(json_str);
-            }
+            esp_mqtt_client_publish(mqtt->client, "/carStatus", json_str, 0, 0, 0);
+            free(json_str);
         }
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -242,6 +245,7 @@ static void handle_mqtt_message(messenger_message_t *message, void *context) {
     switch (message->type) {
         case MESSAGE_MQTT_START: {
             int idx = message->int_data;
+            wifi_debug_printf("Received MQTT_START message - idx: %d\n", idx);
             int result = 0;
             if (idx >= 0 && idx < mqtt->pub_task_count && !mqtt->pub_tasks[idx].active) {
                 result = xTaskCreate(mqtt->pub_tasks[idx].fn, mqtt->pub_tasks[idx].name, 4096, mqtt, 5, &mqtt->pub_tasks[idx].handle);
